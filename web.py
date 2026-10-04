@@ -1,4 +1,4 @@
-"""Página de chat com o agente. Rode com: uvicorn web:app --host 0.0.0.0 --port $PORT"""
+"""Página de chat com o agente. Rode com: python web.py (usa a porta da variável PORT, padrão 8080)"""
 import logging
 import os
 import secrets
@@ -60,3 +60,9 @@ def perguntar(p: Pergunta):
 @app.get("/saude")
 def saude():
     return {"ok": True}
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
