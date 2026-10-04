@@ -51,6 +51,20 @@ Para subir no Railway, no mesmo projeto:
 2. Em **Variables**: `SERVICO` = `web`, `PORT` = `8080`, `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`, `ANTHROPIC_API_KEY` (console.anthropic.com) e `APP_SENHA` (a senha da página; o usuário é `ralph`, ou defina `APP_USUARIO`).
 3. Em **Settings > Networking**, clique em **Generate Domain** para ter a URL.
 
+## Planejador de viagens (no mesmo chat)
+
+No chat dá para pedir "monte um roteiro de 10 dias em Portugal em março, gosto de vinho e trilha". O agente:
+- cruza com os preços do banco (quanto está a passagem nessas datas, se há datas mais baratas perto);
+- vê o clima com a [Open-Meteo](https://open-meteo.com) (`planejador.py`, sem chave): previsão para os próximos 15 dias ou clima típico das mesmas datas nos últimos 3 anos;
+- pesquisa na web (ferramenta `web_search` da Anthropic) regras de entrada para brasileiros, vacinas e eventos;
+- salva o roteiro em `viagens` e o checklist em `itens_viagem`: roupas, mala, documentos e tarefas com prazo.
+
+A página **/viagens** mostra os roteiros salvos e o checklist para marcar. Com `RESEND_API_KEY` e `ALERTA_EMAIL` no serviço do coletor, `lembretes.py` manda e-mail junto com a coleta diária: prazo de documento ou tarefa a 7 dias e na véspera, e o que falta na mala quando a viagem está a 3 dias.
+
+Com a confirmação do Ralph, o agente também pode passar a monitorar um destino novo (`monitorar_destino` grava em `rotas`).
+
+Não precisa de variável nova. A busca na web é cobrada à parte pela Anthropic (US$ 10 por mil buscas) e precisa estar liberada para a organização no console da Anthropic (costuma vir liberada).
+
 ## Rodar e testar localmente
 
 ```bash

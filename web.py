@@ -2,20 +2,38 @@
 import logging
 import os
 import secrets
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import anthropic
+import psycopg
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
 
 import agente
+import planejador
 
 log = logging.getLogger("web")
-app = FastAPI(title="Caçador de Passagens")
+PASTA = Path(__file__).parent
+PAGINA = (PASTA / "chat.html").read_text(encoding="utf-8")
+PAGINA_VIAGENS = (PASTA / "viagens.html").read_text(encoding="utf-8")
+
+
+@asynccontextmanager
+async def iniciar(app):
+    # Cria as tabelas novas (viagens) sem esperar a próxima coleta
+    try:
+        with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+            conn.execute((PASTA / "schema.sql").read_text())
+    except Exception:
+        log.exception("Não consegui aplicar o schema.sql")
+    yield
+
+
+app = FastAPI(title="Caçador de Passagens", lifespan=iniciar)
 seguranca = HTTPBasic(realm="Cacador de Passagens")
-PAGINA = (Path(__file__).parent / "chat.html").read_text(encoding="utf-8")
 
 
 def autenticar(cred: HTTPBasicCredentials = Depends(seguranca)):
@@ -55,6 +73,37 @@ def perguntar(p: Pergunta):
     except anthropic.APIConnectionError:
         raise HTTPException(502, "Sem conexão com o Claude. Tente de novo.")
     return {"resposta": resposta}
+
+
+@app.get("/viagens", response_class=HTMLResponse, dependencies=[Depends(autenticar)])
+def pagina_viagens():
+    return PAGINA_VIAGENS
+
+
+@app.get("/api/viagens", dependencies=[Depends(autenticar)])
+def viagens():
+    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+        return planejador.listar_viagens(conn)
+
+
+class Marcacao(BaseModel):
+    feito: bool
+
+
+@app.post("/api/itens/{item_id}", dependencies=[Depends(autenticar)])
+def marcar_item(item_id: int, m: Marcacao):
+    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+        if conn.execute("UPDATE itens_viagem SET feito = %s WHERE id = %s", (m.feito, item_id)).rowcount == 0:
+            raise HTTPException(404, "Item não encontrado")
+    return {"ok": True}
+
+
+@app.delete("/api/viagens/{viagem_id}", dependencies=[Depends(autenticar)])
+def apagar_viagem(viagem_id: int):
+    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+        if conn.execute("DELETE FROM viagens WHERE id = %s", (viagem_id,)).rowcount == 0:
+            raise HTTPException(404, "Viagem não encontrada")
+    return {"ok": True}
 
 
 @app.get("/saude")

@@ -14,6 +14,7 @@
   main { max-width:760px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; padding:16px; }
   h1 { font-size:20px; margin:8px 0 4px; }
   .sub { color:var(--suave); margin:0 0 16px; font-size:14px; }
+  a { color:var(--acento); }
   #conversa { flex:1; display:flex; flex-direction:column; gap:12px; padding-bottom:16px; }
   .msg { padding:12px 14px; border-radius:12px; background:var(--card); border:1px solid var(--borda); white-space:pre-wrap; overflow-wrap:anywhere; }
   .msg.eu { background:var(--eu); align-self:flex-end; max-width:85%; }
@@ -30,12 +31,12 @@
 <body>
 <main>
   <h1>✈️ Caçador de Passagens</h1>
-  <p class="sub">Pergunte sobre os preços coletados saindo de GRU.</p>
+  <p class="sub">Pergunte sobre preços saindo de GRU ou peça um roteiro. <a href="viagens">Minhas viagens</a></p>
   <div class="sugestoes" id="sugestoes">
     <button>Qual o mês mais barato para Lisboa?</button>
     <button>Algum destino está abaixo do normal agora?</button>
-    <button>Quais destinos da descoberta valem a pena?</button>
-    <button>Como o preço de Santiago mudou nos últimos dias?</button>
+    <button>Monte um roteiro de 10 dias em Portugal em março, gosto de vinho e trilha</button>
+    <button>O que preciso para entrar em Londres e o que levar em dezembro?</button>
   </div>
   <div id="conversa"></div>
   <form id="form">
@@ -51,7 +52,9 @@ const botao = document.getElementById("enviar");
 
 function escapar(t) { return t.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function formatar(t) {
-  return escapar(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/^#{1,6} (.+)$/gm, "<b>$1</b>");
+  return escapar(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/^#{1,6} (.+)$/gm, "<b>$1</b>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<)\]]+)/g,
+             (_, texto, url, solto) => `<a href="${url || solto}" target="_blank" rel="noopener">${texto || solto}</a>`);
 }
 function adicionar(texto, classe) {
   const div = document.createElement("div");
@@ -65,7 +68,7 @@ async function perguntar(texto) {
   document.getElementById("sugestoes").style.display = "none";
   adicionar(texto, "eu");
   historico.push({role: "user", content: texto});
-  const espera = adicionar("Consultando o banco…", "pensando");
+  const espera = adicionar("Pensando… (um roteiro completo pode levar uns minutos)", "pensando");
   botao.disabled = true;
   try {
     const r = await fetch("api/perguntar", {method: "POST", headers: {"Content-Type": "application/json"},
