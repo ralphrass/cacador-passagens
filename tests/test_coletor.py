@@ -22,6 +22,7 @@ def conn():
     with psycopg.connect(url) as c:
         c.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
         c.execute(open(os.path.join(os.path.dirname(coletor.__file__), "schema.sql")).read())
+        c.commit()
         yield c
 
 

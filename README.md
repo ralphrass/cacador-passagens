@@ -42,11 +42,22 @@ O mesmo trecho (rota + datas) só é avisado de novo se cair mais 5%. O envio us
 
 Variáveis opcionais: `MESES_A_FRENTE` (padrão 6), `LIMITE_MENSAL_SERPAPI` (padrão 220).
 
+## Agente de IA (página web)
+
+`web.py` serve um chat em que você pergunta em português ("qual o mês mais barato para Lisboa?") e o Claude responde consultando o banco. O agente (`agente.py`) usa o tool runner do SDK da Anthropic com uma ferramenta, `consultar_sql`, que roda **um único SELECT** numa transação somente leitura (limite de 15 s e 200 linhas).
+
+Para subir no Railway, no mesmo projeto:
+1. **New > GitHub Repo** e escolha este repositório de novo (vira um segundo serviço).
+2. Em **Settings > Config-as-code**, aponte o caminho para `/railway.web.json`. Sem isso o serviço herdaria o cron do coletor.
+3. Em **Variables**: `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`, `ANTHROPIC_API_KEY` (console.anthropic.com) e `APP_SENHA` (a senha da página; o usuário é `ralph`, ou defina `APP_USUARIO`).
+4. Em **Settings > Networking**, clique em **Generate Domain** para ter a URL.
+
 ## Rodar e testar localmente
 
 ```bash
-pip install -r requirements.txt pytest
+pip install -r requirements.txt pytest httpx
 DATABASE_URL=postgresql://... SERPAPI_KEY=... TRAVELPAYOUTS_TOKEN=... python coletor.py
+DATABASE_URL=postgresql://... ANTHROPIC_API_KEY=... APP_SENHA=teste uvicorn web:app --reload
 TEST_DATABASE_URL=postgresql://... pytest -q    # apaga e recria o schema public desse banco!
 ```
 

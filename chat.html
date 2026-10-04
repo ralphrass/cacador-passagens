@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caçador de Passagens</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --texto:#1d2330; --suave:#667085; --borda:#e3e6ea; --acento:#1f6feb; --eu:#e8f0fe; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111418; --card:#1a1f26; --texto:#e6e9ee; --suave:#98a2b3; --borda:#2a313b; --acento:#4c8dff; --eu:#1e2a3d; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--texto); font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  main { max-width:760px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; padding:16px; }
+  h1 { font-size:20px; margin:8px 0 4px; }
+  .sub { color:var(--suave); margin:0 0 16px; font-size:14px; }
+  #conversa { flex:1; display:flex; flex-direction:column; gap:12px; padding-bottom:16px; }
+  .msg { padding:12px 14px; border-radius:12px; background:var(--card); border:1px solid var(--borda); white-space:pre-wrap; overflow-wrap:anywhere; }
+  .msg.eu { background:var(--eu); align-self:flex-end; max-width:85%; }
+  .msg.erro { border-color:#d92d20; }
+  .pensando { color:var(--suave); font-style:italic; }
+  .sugestoes { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .sugestoes button { background:var(--card); color:var(--texto); border:1px solid var(--borda); border-radius:999px; padding:6px 12px; font-size:14px; cursor:pointer; }
+  form { display:flex; gap:8px; position:sticky; bottom:0; background:var(--bg); padding:8px 0; }
+  textarea { flex:1; resize:none; font:inherit; color:inherit; background:var(--card); border:1px solid var(--borda); border-radius:10px; padding:10px 12px; min-height:46px; }
+  form button { background:var(--acento); color:#fff; border:0; border-radius:10px; padding:0 18px; font:inherit; cursor:pointer; }
+  form button:disabled { opacity:.5; cursor:default; }
+</style>
+</head>
+<body>
+<main>
+  <h1>✈️ Caçador de Passagens</h1>
+  <p class="sub">Pergunte sobre os preços coletados saindo de GRU.</p>
+  <div class="sugestoes" id="sugestoes">
+    <button>Qual o mês mais barato para Lisboa?</button>
+    <button>Algum destino está abaixo do normal agora?</button>
+    <button>Quais destinos da descoberta valem a pena?</button>
+    <button>Como o preço de Santiago mudou nos últimos dias?</button>
+  </div>
+  <div id="conversa"></div>
+  <form id="form">
+    <textarea id="entrada" rows="1" placeholder="Escreva sua pergunta" required></textarea>
+    <button id="enviar">Enviar</button>
+  </form>
+</main>
+<script>
+const historico = [];
+const conversa = document.getElementById("conversa");
+const entrada = document.getElementById("entrada");
+const botao = document.getElementById("enviar");
+
+function escapar(t) { return t.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function formatar(t) {
+  return escapar(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/^#{1,6} (.+)$/gm, "<b>$1</b>");
+}
+function adicionar(texto, classe) {
+  const div = document.createElement("div");
+  div.className = "msg " + (classe || "");
+  div.innerHTML = classe === "eu" ? escapar(texto) : formatar(texto);
+  conversa.appendChild(div);
+  div.scrollIntoView({behavior: "smooth", block: "end"});
+  return div;
+}
+async function perguntar(texto) {
+  document.getElementById("sugestoes").style.display = "none";
+  adicionar(texto, "eu");
+  historico.push({role: "user", content: texto});
+  const espera = adicionar("Consultando o banco…", "pensando");
+  botao.disabled = true;
+  try {
+    const r = await fetch("api/perguntar", {method: "POST", headers: {"Content-Type": "application/json"},
+                                          body: JSON.stringify({historico: historico.slice(-40)})});
+    const dados = await r.json().catch(() => ({}));
+    espera.remove();
+    if (!r.ok) throw new Error(dados.detail || "Erro " + r.status);
+    historico.push({role: "assistant", content: dados.resposta});
+    adicionar(dados.resposta);
+  } catch (e) {
+    espera.remove();
+    historico.pop();
+    adicionar(String(e.message || e), "erro");
+  } finally {
+    botao.disabled = false;
+    entrada.focus();
+  }
+}
+document.getElementById("form").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const t = entrada.value.trim();
+  if (t && !botao.disabled) { entrada.value = ""; perguntar(t); }
+});
+entrada.addEventListener("keydown", ev => {
+  if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); document.getElementById("form").requestSubmit(); }
+});
+document.querySelectorAll("#sugestoes button").forEach(b => b.addEventListener("click", () => perguntar(b.textContent)));
+</script>
+</body>
+</html>
