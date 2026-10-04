@@ -15,6 +15,7 @@ from pathlib import Path
 import psycopg
 from psycopg.types.json import Jsonb
 
+import alertas
 import fontes
 
 log = logging.getLogger("coletor")
@@ -213,7 +214,9 @@ def main():
         else:
             log.warning("TRAVELPAYOUTS_TOKEN ausente; usando datas padrão na SerpApi")
 
+        ultima_busca = conn.execute("SELECT coalesce(max(id), 0) FROM buscas").fetchone()[0]
         buscar_serpapi(conn, rotas, hoje)
+        alertas.processar(conn, ultima_busca)
 
 
 if __name__ == "__main__":

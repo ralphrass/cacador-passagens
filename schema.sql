@@ -85,3 +85,16 @@ INSERT INTO rotas (nome, destino_tp, destino_serpapi) VALUES
     ('Orlando',   'ORL', 'MCO'),
     ('Nova York', 'NYC', 'JFK,EWR')
 ON CONFLICT (origem, destino_tp) DO NOTHING;
+
+-- Alertas já enviados, para não repetir o mesmo aviso todo dia.
+CREATE TABLE IF NOT EXISTS alertas (
+    id          bigserial PRIMARY KEY,
+    enviado_em  timestamptz NOT NULL DEFAULT now(),
+    busca_id    bigint NOT NULL REFERENCES buscas(id),
+    rota_id     int  NOT NULL REFERENCES rotas(id),
+    ida         date NOT NULL,
+    volta       date NOT NULL,
+    preco       numeric(10,2) NOT NULL,
+    motivo      text NOT NULL
+);
+CREATE INDEX IF NOT EXISTS alertas_rota ON alertas (rota_id, ida, volta);
