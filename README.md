@@ -1,6 +1,6 @@
 # Coletor de preços de passagens
 
-Roda uma vez por dia no Railway, às 7h de Brasília (10:00 UTC), e grava no Postgres:
+Roda uma vez por dia no Railway, às 7h de Brasília (10:00 UTC, mude com `HORA_COLETA_UTC`), e grava no Postgres:
 
 | Tabela | O que guarda | Fonte |
 |---|---|---|
@@ -38,7 +38,7 @@ O mesmo trecho (rota + datas) só é avisado de novo se cair mais 5%. O envio us
    - `SERPAPI_KEY` = sua chave
    - `TRAVELPAYOUTS_TOKEN` = seu token (opcional; sem ele, usa datas padrão)
    - `RESEND_API_KEY` e `ALERTA_EMAIL` (opcionais; sem eles, não envia alertas)
-5. O `railway.json` já define o cron diário e o comando `python coletor.py`. O próprio coletor cria as tabelas na primeira execução.
+5. O `railway.json` roda `python iniciar.py`, que fica no ar e dispara a coleta no horário (não usa o cron do Railway). O próprio coletor cria as tabelas na primeira execução. Com `COLETAR_AGORA=1` ele coleta assim que sobe (e em cada novo deploy, enquanto a variável existir).
 
 Variáveis opcionais: `MESES_A_FRENTE` (padrão 6), `LIMITE_MENSAL_SERPAPI` (padrão 220).
 
@@ -48,16 +48,15 @@ Variáveis opcionais: `MESES_A_FRENTE` (padrão 6), `LIMITE_MENSAL_SERPAPI` (pad
 
 Para subir no Railway, no mesmo projeto:
 1. **New > GitHub Repo** e escolha este repositório de novo (vira um segundo serviço).
-2. Em **Settings > Config-as-code**, aponte o caminho para `/railway.web.json`. Sem isso o serviço herdaria o cron do coletor.
-3. Em **Variables**: `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`, `ANTHROPIC_API_KEY` (console.anthropic.com) e `APP_SENHA` (a senha da página; o usuário é `ralph`, ou defina `APP_USUARIO`).
-4. Em **Settings > Networking**, clique em **Generate Domain** para ter a URL.
+2. Em **Variables**: `SERVICO` = `web`, `PORT` = `8080`, `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`, `ANTHROPIC_API_KEY` (console.anthropic.com) e `APP_SENHA` (a senha da página; o usuário é `ralph`, ou defina `APP_USUARIO`).
+3. Em **Settings > Networking**, clique em **Generate Domain** para ter a URL.
 
 ## Rodar e testar localmente
 
 ```bash
 pip install -r requirements.txt pytest httpx
 DATABASE_URL=postgresql://... SERPAPI_KEY=... TRAVELPAYOUTS_TOKEN=... python coletor.py
-DATABASE_URL=postgresql://... ANTHROPIC_API_KEY=... APP_SENHA=teste uvicorn web:app --reload
+SERVICO=web DATABASE_URL=postgresql://... ANTHROPIC_API_KEY=... APP_SENHA=teste python iniciar.py
 TEST_DATABASE_URL=postgresql://... pytest -q    # apaga e recria o schema public desse banco!
 ```
 
