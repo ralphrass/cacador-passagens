@@ -64,6 +64,14 @@ def consultar_sql(sql: str) -> str:
     return json.dumps(resultado, default=str, ensure_ascii=False)
 
 
+def preferencia():
+    de, ate = os.environ.get("IDA_DE", "2027-01-01"), os.environ.get("IDA_ATE", "2027-02-28")
+    if not (de and ate):
+        return ""
+    return (f"O Ralph quer viajar com ida entre {date.fromisoformat(de):%d/%m/%Y} e "
+            f"{date.fromisoformat(ate):%d/%m/%Y}; priorize essas datas quando a pergunta não disser outra época.")
+
+
 def responder(historico):
     """historico: lista de {"role": "user"|"assistant", "content": str}, terminando no usuário."""
     cliente = anthropic.Anthropic()
@@ -71,7 +79,7 @@ def responder(historico):
         model=MODELO,
         max_tokens=16000,
         system=[{"type": "text", "text": SISTEMA, "cache_control": {"type": "ephemeral"}},
-                {"type": "text", "text": f"Hoje é {date.today():%d/%m/%Y}."}],
+                {"type": "text", "text": f"Hoje é {date.today():%d/%m/%Y}. {preferencia()}"}],
         output_config={"effort": "medium"},
         betas=["server-side-fallback-2026-07-01"],
         fallbacks="default",

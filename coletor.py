@@ -23,6 +23,10 @@ log = logging.getLogger("coletor")
 DIAS_MIN, DIAS_MAX = 7, 15
 MESES_A_FRENTE = int(os.environ.get("MESES_A_FRENTE", 6))
 LIMITE_MENSAL = int(os.environ.get("LIMITE_MENSAL_SERPAPI", 220))
+# Janela de ida preferida para as buscas confirmadas na SerpApi (a Travelpayouts continua
+# coletando os próximos meses inteiros). Vazio desliga a janela.
+IDA_DE = os.environ.get("IDA_DE", "2027-01-01")
+IDA_ATE = os.environ.get("IDA_ATE", "2027-02-28")
 QUEDA = Decimal("0.85")  # preço abaixo de 85% da mediana recente conta como queda
 
 
@@ -100,19 +104,34 @@ def coletar_descoberta(conn):
 
 # ---------- Etapa 3: escolher e fazer as buscas na SerpApi ----------
 
+def janela_ida(hoje):
+    """(início, fim) das idas a considerar, ou None se não há janela ou ela já passou."""
+    if not (IDA_DE and IDA_ATE):
+        return None
+    inicio = max(date.fromisoformat(IDA_DE), hoje + timedelta(days=7))
+    fim = date.fromisoformat(IDA_ATE)
+    if inicio > fim:
+        log.warning("A janela de ida %s a %s já passou; buscando sem janela", IDA_DE, IDA_ATE)
+        return None
+    return inicio, fim
+
+
 def escolher_buscas(conn, rotas, hoje):
     """Uma candidata por rota: o par de datas mais barato visto hoje na Travelpayouts."""
+    janela = janela_ida(hoje)
+    ida_min, ida_max = janela or (hoje + timedelta(days=7), date.max)
     candidatas = []
     for rota_id, nome, *_ in rotas:
         melhor = conn.execute(
             """SELECT ida, volta, preco FROM precos_tp
-               WHERE rota_id = %s AND coletado_em::date = %s AND ida >= %s
+               WHERE rota_id = %s AND coletado_em::date = %s AND ida BETWEEN %s AND %s
                ORDER BY preco LIMIT 1""",
-            (rota_id, hoje, hoje + timedelta(days=7))).fetchone()
+            (rota_id, hoje, ida_min, ida_max)).fetchone()
         if melhor:
             ida, volta, preco = melhor
-        else:  # sem dados da Travelpayouts: data padrão daqui a 45 dias, 10 dias de viagem
-            ida, preco = hoje + timedelta(days=45), None
+        else:  # sem dados da Travelpayouts: início da janela (ou daqui a 45 dias), 10 dias de viagem
+            ida = ida_min + timedelta(days=14) if janela else hoje + timedelta(days=45)
+            ida, preco = min(ida, ida_max), None
             volta = ida + timedelta(days=10)
 
         ultima = conn.execute(
@@ -125,8 +144,9 @@ def escolher_buscas(conn, rotas, hoje):
             recentes = [r[0] for r in conn.execute(
                 """SELECT min(preco) FROM precos_tp
                    WHERE rota_id = %s AND coletado_em >= %s AND coletado_em::date < %s
+                     AND ida BETWEEN %s AND %s
                    GROUP BY coletado_em::date""",
-                (rota_id, hoje - timedelta(days=30), hoje))]
+                (rota_id, hoje - timedelta(days=30), hoje, ida_min, ida_max))]
             if len(recentes) >= 5 and preco < QUEDA * statistics.median(recentes):
                 queda = True
 

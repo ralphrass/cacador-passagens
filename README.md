@@ -13,7 +13,7 @@ Roda uma vez por dia no Railway, às 7h de Brasília (10:00 UTC, mude com `HORA_
 
 ## Como a cota da SerpApi é poupada
 
-Para cada rota, o coletor pega o par de datas mais barato visto hoje na Travelpayouts e só busca na SerpApi quando:
+Para cada rota, o coletor pega o par de datas mais barato visto hoje na Travelpayouts, com ida dentro da janela `IDA_DE`–`IDA_ATE`, e só busca na SerpApi quando:
 - **agenda:** já passou o intervalo desde a última busca da rota (viagem a mais de 60 dias: 7 dias; de 30 a 60: 3 dias; menos de 30: diário), ou
 - **queda:** o preço de hoje está mais de 15% abaixo da mediana dos últimos 30 dias.
 
@@ -40,7 +40,7 @@ O mesmo trecho (rota + datas) só é avisado de novo se cair mais 5%. O envio us
    - `RESEND_API_KEY` e `ALERTA_EMAIL` (opcionais; sem eles, não envia alertas)
 5. O `railway.json` roda `python iniciar.py`, que fica no ar e dispara a coleta no horário (não usa o cron do Railway). O próprio coletor cria as tabelas na primeira execução. Com `COLETAR_AGORA=1` ele coleta assim que sobe (e em cada novo deploy, enquanto a variável existir).
 
-Variáveis opcionais: `MESES_A_FRENTE` (padrão 6), `LIMITE_MENSAL_SERPAPI` (padrão 220).
+Variáveis opcionais: `MESES_A_FRENTE` (padrão 6), `LIMITE_MENSAL_SERPAPI` (padrão 220), `IDA_DE` e `IDA_ATE` (janela de ida das buscas confirmadas na SerpApi; padrão 01/01/2027 a 28/02/2027; deixe vazias para desligar).
 
 ## Agente de IA (página web)
 
