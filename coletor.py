@@ -16,6 +16,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 import alertas
+import lembretes
 import fontes
 
 log = logging.getLogger("coletor")
@@ -203,6 +204,11 @@ def main():
     with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
         conn.execute(Path(__file__).with_name("schema.sql").read_text())
         conn.commit()
+        try:  # lembretes das viagens planejadas não dependem da coleta de preços
+            lembretes.processar(conn)
+        except Exception:
+            conn.rollback()
+            log.exception("Falha nos lembretes de viagem")
         rotas = conn.execute(
             """SELECT id, nome, origem, destino_tp, destino_serpapi
                FROM rotas WHERE ativa ORDER BY id""").fetchall()

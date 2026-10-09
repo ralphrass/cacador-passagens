@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minhas viagens</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --texto:#1d2330; --suave:#667085; --borda:#e3e6ea; --acento:#1f6feb; --ok:#12805c; --alerta:#b54708; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111418; --card:#1a1f26; --texto:#e6e9ee; --suave:#98a2b3; --borda:#2a313b; --acento:#4c8dff; --ok:#3ccb7f; --alerta:#f79009; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--texto); font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:16px; }
+  h1 { font-size:20px; margin:8px 0 4px; }
+  .sub { color:var(--suave); margin:0 0 16px; font-size:14px; }
+  a { color:var(--acento); }
+  .viagem { background:var(--card); border:1px solid var(--borda); border-radius:12px; padding:16px; margin-bottom:16px; }
+  .viagem h2 { font-size:18px; margin:0; }
+  .meta { color:var(--suave); font-size:14px; margin:2px 0 8px; }
+  details { margin:8px 0; }
+  summary { cursor:pointer; font-weight:600; }
+  .roteiro { white-space:pre-wrap; overflow-wrap:anywhere; font-size:15px; margin-top:8px; }
+  .grupo h3 { font-size:15px; margin:12px 0 4px; }
+  label { display:flex; gap:8px; align-items:flex-start; padding:3px 0; cursor:pointer; }
+  label input { margin-top:5px; }
+  label.feito span { text-decoration:line-through; color:var(--suave); }
+  .prazo { font-size:13px; color:var(--suave); white-space:nowrap; }
+  .prazo.perto { color:var(--alerta); font-weight:600; }
+  .barra { height:6px; background:var(--borda); border-radius:3px; overflow:hidden; margin:4px 0 8px; }
+  .barra div { height:100%; background:var(--ok); }
+  .apagar { background:none; border:0; color:var(--suave); font:inherit; font-size:13px; cursor:pointer; padding:0; margin-top:8px; }
+  .vazio { color:var(--suave); }
+</style>
+</head>
+<body>
+<main>
+  <h1>🧳 Minhas viagens</h1>
+  <p class="sub">Roteiros e checklists salvos pelo assistente. <a href="./">Voltar ao chat</a></p>
+  <div id="lista"><p class="vazio">Carregando…</p></div>
+</main>
+<script>
+const NOMES = {documento: "Documentos", tarefa: "Tarefas", roupa: "Roupas", mala: "Mala"};
+const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+
+function escapar(t) { return String(t ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function formatar(t) {
+  return escapar(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/^#{1,6} (.+)$/gm, "<b>$1</b>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<)\]]+)/g,
+             (_, texto, url, solto) => `<a href="${url || solto}" target="_blank" rel="noopener">${texto || solto}</a>`);
+}
+function data(iso) { return iso ? iso.split("-").reverse().join("/") : ""; }
+function dias(iso) { return Math.round((new Date(iso + "T00:00:00") - hoje) / 86400000); }
+
+function item(i) {
+  let prazo = "";
+  if (i.prazo) {
+    const d = dias(i.prazo);
+    prazo = `<span class="prazo ${!i.feito && d <= 7 ? "perto" : ""}">${d < 0 && !i.feito ? "atrasado, " : "até "}${data(i.prazo)}</span>`;
+  }
+  return `<label class="${i.feito ? "feito" : ""}"><input type="checkbox" data-id="${i.id}" ${i.feito ? "checked" : ""}>
+    <span>${escapar(i.descricao)} ${prazo}</span></label>`;
+}
+
+function viagem(v) {
+  const feitos = v.itens.filter(i => i.feito).length;
+  const total = v.itens.length;
+  let quando = v.ida ? `${data(v.ida)}${v.volta ? " a " + data(v.volta) : ""}` : "datas a definir";
+  if (v.ida && dias(v.ida) >= 0) quando += ` · faltam ${dias(v.ida)} dias`;
+  const grupos = Object.keys(NOMES).map(t => {
+    const itens = v.itens.filter(i => i.tipo === t);
+    return itens.length ? `<div class="grupo"><h3>${NOMES[t]}</h3>${itens.map(item).join("")}</div>` : "";
+  }).join("");
+  return `<section class="viagem">
+    <h2>${escapar(v.titulo)}</h2>
+    <p class="meta">${escapar(v.destino)} · ${quando}${v.pessoas ? " · " + escapar(v.pessoas) : ""}</p>
+    ${total ? `<div class="barra"><div style="width:${100 * feitos / total}%"></div></div>
+      <p class="meta">${feitos} de ${total} itens do checklist feitos</p>` : ""}
+    ${v.roteiro ? `<details><summary>Roteiro</summary><div class="roteiro">${formatar(v.roteiro)}</div></details>` : ""}
+    ${grupos ? `<details open><summary>Checklist</summary>${grupos}</details>` : ""}
+    <button class="apagar" data-viagem="${v.id}">Apagar viagem</button>
+  </section>`;
+}
+
+async function carregar() {
+  const lista = document.getElementById("lista");
+  try {
+    const r = await fetch("api/viagens");
+    if (!r.ok) throw new Error("Erro " + r.status);
+    const viagens = await r.json();
+    lista.innerHTML = viagens.length ? viagens.map(viagem).join("")
+      : `<p class="vazio">Nenhuma viagem ainda. Peça um roteiro no <a href="./">chat</a>.</p>`;
+  } catch (e) {
+    lista.innerHTML = `<p class="vazio">Não consegui carregar as viagens (${escapar(e.message)}).</p>`;
+  }
+}
+
+document.addEventListener("change", async ev => {
+  const caixa = ev.target.closest("input[data-id]");
+  if (!caixa) return;
+  caixa.closest("label").classList.toggle("feito", caixa.checked);
+  const r = await fetch("api/itens/" + caixa.dataset.id, {method: "POST", headers: {"Content-Type": "application/json"},
+                                                         body: JSON.stringify({feito: caixa.checked})});
+  if (!r.ok) { alert("Não consegui salvar"); }
+  carregar();
+});
+document.addEventListener("click", async ev => {
+  const botao = ev.target.closest("button[data-viagem]");
+  if (!botao || !confirm("Apagar esta viagem e o checklist dela?")) return;
+  await fetch("api/viagens/" + botao.dataset.viagem, {method: "DELETE"});
+  carregar();
+});
+carregar();
+</script>
+</body>
+</html>

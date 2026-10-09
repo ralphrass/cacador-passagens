@@ -106,3 +106,29 @@ CREATE TABLE IF NOT EXISTS alertas (
     motivo      text NOT NULL
 );
 CREATE INDEX IF NOT EXISTS alertas_rota ON alertas (rota_id, ida, volta);
+
+-- Planejador de viagens: roteiros salvos pelo agente do chat.
+CREATE TABLE IF NOT EXISTS viagens (
+    id             serial PRIMARY KEY,
+    criada_em      timestamptz NOT NULL DEFAULT now(),
+    titulo         text NOT NULL,
+    destino        text NOT NULL,          -- cidade(s), ex.: "Lisboa e Porto"
+    ida            date,
+    volta          date,
+    pessoas        text,                   -- ex.: "casal", "2 adultos e 1 criança"
+    preferencias   text,                   -- o que gostam de fazer, ritmo, orçamento
+    roteiro        text,                   -- roteiro dia a dia em markdown
+    aviso_mala_em  timestamptz             -- quando foi o e-mail de "faltam poucos dias"
+);
+
+-- Checklist de cada viagem: roupas, mala, documentos e tarefas com prazo.
+CREATE TABLE IF NOT EXISTS itens_viagem (
+    id          serial PRIMARY KEY,
+    viagem_id   int  NOT NULL REFERENCES viagens(id) ON DELETE CASCADE,
+    tipo        text NOT NULL CHECK (tipo IN ('roupa', 'mala', 'documento', 'tarefa')),
+    descricao   text NOT NULL,
+    prazo       date,                     -- até quando fazer (tarefas e documentos)
+    feito       boolean NOT NULL DEFAULT false,
+    avisado_em  timestamptz               -- último lembrete por e-mail
+);
+CREATE INDEX IF NOT EXISTS itens_viagem_viagem ON itens_viagem (viagem_id);
