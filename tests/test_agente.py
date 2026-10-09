@@ -27,7 +27,7 @@ def test_consulta_de_leitura(banco):
 def test_bloqueia_escrita_e_varios_comandos(banco):
     assert "read-only" in sql("DELETE FROM rotas")
     assert "multiple commands" in sql("COMMIT; DELETE FROM rotas")
-    assert banco.execute("SELECT count(*) FROM rotas").fetchone()[0] == 8
+    assert banco.execute("SELECT count(*) FROM rotas").fetchone()[0] == 13
 
 
 def test_erro_volta_como_texto(banco):

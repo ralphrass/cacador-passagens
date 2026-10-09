@@ -4,7 +4,7 @@ Roda uma vez por dia no Railway, às 7h de Brasília (10:00 UTC, mude com `HORA_
 
 | Tabela | O que guarda | Fonte |
 |---|---|---|
-| `rotas` | As 8 rotas saindo de GRU (Lisboa, Madri, Paris, Roma, Londres, Santiago, Orlando, Nova York) | fixa, edite à vontade |
+| `rotas` | As 10 rotas ativas saindo de GRU (Lisboa, Madri, Paris, Roma, Londres, Frankfurt, Munique, Berlim, Amsterdã, Dublin) | lista no `schema.sql` |
 | `precos_tp` | Ida e volta de 7 a 15 dias nos próximos 6 meses, um retrato por dia | Travelpayouts (grátis) |
 | `descoberta` | Destinos mais baratos saindo de São Paulo | Travelpayouts (grátis) |
 | `buscas` + `ofertas` | Busca confirmada no Google Flights: menor preço, nível, faixa típica e voos | SerpApi (cota) |
@@ -62,7 +62,8 @@ TEST_DATABASE_URL=postgresql://... pytest -q    # apaga e recria o schema public
 
 ## Mudar as rotas
 
+A lista no fim do `schema.sql` é a fonte da verdade e é aplicada no início de cada coleta. Para tirar uma rota, troque `ativa` para `false` (o histórico continua no banco); para incluir, acrescente uma linha com o código de cidade da Travelpayouts e os aeroportos da SerpApi:
+
 ```sql
-UPDATE rotas SET ativa = false WHERE nome = 'Orlando';
-INSERT INTO rotas (nome, destino_tp, destino_serpapi) VALUES ('Amsterdã', 'AMS', 'AMS');
+    ('Viena', 'VIE', 'VIE', true),
 ```

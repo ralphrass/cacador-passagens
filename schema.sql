@@ -75,16 +75,24 @@ CREATE TABLE IF NOT EXISTS historico_google (
     PRIMARY KEY (rota_id, ida, volta, dia)
 );
 
-INSERT INTO rotas (nome, destino_tp, destino_serpapi) VALUES
-    ('Lisboa',    'LIS', 'LIS'),
-    ('Madri',     'MAD', 'MAD'),
-    ('Paris',     'PAR', 'CDG,ORY'),
-    ('Roma',      'ROM', 'FCO'),
-    ('Londres',   'LON', 'LHR,LGW'),
-    ('Santiago',  'SCL', 'SCL'),
-    ('Orlando',   'ORL', 'MCO'),
-    ('Nova York', 'NYC', 'JFK,EWR')
-ON CONFLICT (origem, destino_tp) DO NOTHING;
+-- Lista de rotas: esta é a fonte da verdade. Para tirar uma rota, mude ativa para false
+-- (o histórico dela continua no banco); para incluir, acrescente uma linha.
+INSERT INTO rotas (nome, destino_tp, destino_serpapi, ativa) VALUES
+    ('Lisboa',    'LIS', 'LIS',     true),
+    ('Madri',     'MAD', 'MAD',     true),
+    ('Paris',     'PAR', 'CDG,ORY', true),
+    ('Roma',      'ROM', 'FCO',     true),
+    ('Londres',   'LON', 'LHR,LGW', true),
+    ('Frankfurt', 'FRA', 'FRA',     true),
+    ('Munique',   'MUC', 'MUC',     true),
+    ('Berlim',    'BER', 'BER',     true),
+    ('Amsterdã',  'AMS', 'AMS',     true),
+    ('Dublin',    'DUB', 'DUB',     true),
+    ('Santiago',  'SCL', 'SCL',     false),
+    ('Orlando',   'ORL', 'MCO',     false),
+    ('Nova York', 'NYC', 'JFK,EWR', false)
+ON CONFLICT (origem, destino_tp) DO UPDATE
+    SET nome = EXCLUDED.nome, destino_serpapi = EXCLUDED.destino_serpapi, ativa = EXCLUDED.ativa;
 
 -- Alertas já enviados, para não repetir o mesmo aviso todo dia.
 CREATE TABLE IF NOT EXISTS alertas (

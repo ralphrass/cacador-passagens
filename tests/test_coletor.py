@@ -28,7 +28,7 @@ def conn():
 
 def rotas(conn):
     return conn.execute(
-        "SELECT id, nome, origem, destino_tp, destino_serpapi FROM rotas ORDER BY id").fetchall()
+        "SELECT id, nome, origem, destino_tp, destino_serpapi FROM rotas WHERE ativa ORDER BY id").fetchall()
 
 
 def resposta_serp(preco=4158):
@@ -77,8 +77,8 @@ def test_primeira_execucao_busca_todas_as_rotas(conn, monkeypatch):
     monkeypatch.setattr(fontes, "serp_voos",
                         lambda o, d, i, v: feitas.append(d) or resposta_serp())
     coletor.buscar_serpapi(conn, rotas(conn), HOJE)
-    assert len(feitas) == 8
-    assert conn.execute("SELECT count(*) FROM historico_google").fetchone()[0] == 16
+    assert len(feitas) == 10
+    assert conn.execute("SELECT count(*) FROM historico_google").fetchone()[0] == 20
     assert conn.execute("SELECT trajeto FROM ofertas LIMIT 1").fetchone()[0] == "GRU > LIS"
 
 
@@ -109,3 +109,14 @@ def test_agenda_semanal_e_queda(conn):
     candidatas = coletor.escolher_buscas(conn, rs, HOJE)
     # só Lisboa (queda); as demais caem em data padrão (45 dias -> a cada 3 dias), ainda não devidas
     assert [(c[0], c[3]) for c in candidatas] == [("queda", "Lisboa")]
+
+
+def test_lista_de_rotas_desativa_sem_apagar(conn):
+    # simula um banco antigo com Santiago ativa e histórico
+    conn.execute("UPDATE rotas SET ativa = true WHERE destino_tp = 'SCL'")
+    scl = conn.execute("SELECT id FROM rotas WHERE destino_tp = 'SCL'").fetchone()[0]
+    conn.execute("INSERT INTO buscas (rota_id, ida, volta, motivo) VALUES (%s, '2027-02-19', '2027-03-02', 'agenda')", (scl,))
+    conn.execute(open(os.path.join(os.path.dirname(coletor.__file__), "schema.sql")).read())
+    ativas = [r[1] for r in rotas(conn)]
+    assert "Santiago" not in ativas and "Frankfurt" in ativas and len(ativas) == 10
+    assert conn.execute("SELECT count(*) FROM buscas WHERE rota_id = %s", (scl,)).fetchone()[0] == 1

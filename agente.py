@@ -20,7 +20,8 @@ Todas as viagens saem de GRU (São Paulo) e são ida e volta de 7 a 15 dias.
 
 Tabelas:
 - rotas(id, nome, origem, destino_tp, destino_serpapi, ativa): destinos monitorados. destino_tp é o código \
-de cidade (LIS, MAD, PAR, ROM, LON, SCL, ORL, NYC).
+de cidade (ex.: LIS, MAD, PAR, FRA, AMS, DUB). Considere só ativa = true, a não ser que \
+perguntem por rotas antigas.
 - precos_tp(coletado_em, rota_id, ida, volta, dias, preco, cia, conexoes_ida, conexoes_volta, link): \
 preços em cache da Travelpayouts/Aviasales, um retrato por dia de coleta. Bom para comparar meses e datas. \
 Os preços podem ter de 2 a 7 dias de idade.
