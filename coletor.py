@@ -26,7 +26,7 @@ LIMITE_MENSAL = int(os.environ.get("LIMITE_MENSAL_SERPAPI", 220))
 # Janela de ida preferida para as buscas confirmadas na SerpApi (a Travelpayouts continua
 # coletando os próximos meses inteiros). Vazio desliga a janela.
 IDA_DE = os.environ.get("IDA_DE", "2027-01-01")
-IDA_ATE = os.environ.get("IDA_ATE", "2027-02-28")
+IDA_ATE = os.environ.get("IDA_ATE", "2027-03-31")
 QUEDA = Decimal("0.85")  # preço abaixo de 85% da mediana recente conta como queda
 
 

@@ -40,7 +40,7 @@ O mesmo trecho (rota + datas) só é avisado de novo se cair mais 5%. O envio us
    - `RESEND_API_KEY` e `ALERTA_EMAIL` (opcionais; sem eles, não envia alertas)
 5. O `railway.json` roda `python iniciar.py`, que fica no ar e dispara a coleta no horário (não usa o cron do Railway). O próprio coletor cria as tabelas na primeira execução. Com `COLETAR_AGORA=1` ele coleta assim que sobe (e em cada novo deploy, enquanto a variável existir).
 
-Variáveis opcionais: `MESES_A_FRENTE` (padrão 6), `LIMITE_MENSAL_SERPAPI` (padrão 220), `IDA_DE` e `IDA_ATE` (janela de ida das buscas confirmadas na SerpApi; padrão 01/01/2027 a 28/02/2027; deixe vazias para desligar).
+Variáveis opcionais: `MESES_A_FRENTE` (padrão 6), `LIMITE_MENSAL_SERPAPI` (padrão 220), `IDA_DE` e `IDA_ATE` (janela de ida das buscas confirmadas na SerpApi; padrão 01/01/2027 a 31/03/2027; deixe vazias para desligar).
 
 ## Agente de IA (página web)
 

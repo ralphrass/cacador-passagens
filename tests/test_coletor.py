@@ -126,10 +126,10 @@ def test_janela_de_ida(conn, monkeypatch):
     monkeypatch.setattr(coletor, "IDA_DE", "2027-01-01")
     monkeypatch.setattr(coletor, "IDA_ATE", "2027-02-28")
     lis = rotas(conn)[0][0]
-    for ida, preco in ((date(2026, 11, 10), 2500), (date(2027, 1, 20), 4000), (date(2027, 3, 5), 3000)):
+    for ida, preco in ((date(2026, 11, 10), 2500), (date(2027, 1, 20), 4000), (date(2027, 4, 5), 3000)):
         conn.execute("INSERT INTO precos_tp (coletado_em, rota_id, ida, volta, dias, preco) "
                      "VALUES (%s, %s, %s, %s, 10, %s)", (HOJE, lis, ida, ida + timedelta(days=10), preco))
     candidatas = {c[3]: c for c in coletor.escolher_buscas(conn, rotas(conn), HOJE)}
-    assert candidatas["Lisboa"][4] == date(2027, 1, 20)        # ignora novembro e março, mais baratos
+    assert candidatas["Lisboa"][4] == date(2027, 1, 20)        # ignora novembro e abril, mais baratos
     assert candidatas["Madri"][4] == date(2027, 1, 15)         # sem dados: meio de janeiro
     assert coletor.janela_ida(date(2027, 3, 1)) is None        # janela vencida: sem restrição

@@ -65,7 +65,7 @@ def consultar_sql(sql: str) -> str:
 
 
 def preferencia():
-    de, ate = os.environ.get("IDA_DE", "2027-01-01"), os.environ.get("IDA_ATE", "2027-02-28")
+    de, ate = os.environ.get("IDA_DE", "2027-01-01"), os.environ.get("IDA_ATE", "2027-03-31")
     if not (de and ate):
         return ""
     return (f"O Ralph quer viajar com ida entre {date.fromisoformat(de):%d/%m/%Y} e "
