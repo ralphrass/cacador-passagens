@@ -105,24 +105,28 @@ def coletar_descoberta(conn):
 
 # ---------- Etapa 3: escolher e fazer as buscas na SerpApi ----------
 
-def janela_ida(hoje):
-    """(início, fim) das idas a considerar, ou None se não há janela ou ela já passou."""
-    if not (IDA_DE and IDA_ATE):
+def janela_ida(hoje, de=None, ate=None):
+    """(início, fim) das idas a considerar, ou None se não há janela ou ela já passou.
+
+    de/ate são a janela própria da rota (colunas ida_de/ida_ate); se vazias, vale a global."""
+    de = de or (date.fromisoformat(IDA_DE) if IDA_DE else None)
+    ate = ate or (date.fromisoformat(IDA_ATE) if IDA_ATE else None)
+    if not (de and ate):
         return None
-    inicio = max(date.fromisoformat(IDA_DE), hoje + timedelta(days=7))
-    fim = date.fromisoformat(IDA_ATE)
-    if inicio > fim:
-        log.warning("A janela de ida %s a %s já passou; buscando sem janela", IDA_DE, IDA_ATE)
+    inicio = max(de, hoje + timedelta(days=7))
+    if inicio > ate:
+        log.warning("A janela de ida %s a %s já passou; buscando sem janela", de, ate)
         return None
-    return inicio, fim
+    return inicio, ate
 
 
 def escolher_buscas(conn, rotas, hoje):
     """Uma candidata por rota: o par de datas mais barato visto hoje na Travelpayouts."""
-    janela = janela_ida(hoje)
-    ida_min, ida_max = janela or (hoje + timedelta(days=7), date.max)
     candidatas = []
     for rota_id, nome, *_ in rotas:
+        janela = janela_ida(hoje, *conn.execute(
+            "SELECT ida_de, ida_ate FROM rotas WHERE id = %s", (rota_id,)).fetchone())
+        ida_min, ida_max = janela or (hoje + timedelta(days=7), date.max)
         melhor = conn.execute(
             """SELECT ida, volta, preco FROM precos_tp
                WHERE rota_id = %s AND coletado_em::date = %s AND ida BETWEEN %s AND %s

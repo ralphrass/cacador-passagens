@@ -65,5 +65,7 @@ TEST_DATABASE_URL=postgresql://... pytest -q    # apaga e recria o schema public
 A lista no fim do `schema.sql` é a fonte da verdade e é aplicada no início de cada coleta. Para tirar uma rota, troque `ativa` para `false` (o histórico continua no banco); para incluir, acrescente uma linha com o código de cidade da Travelpayouts e os aeroportos da SerpApi:
 
 ```sql
-    ('Viena', 'VIE', 'VIE', true),
+    ('Viena',     'VIE', 'VIE',     true,  NULL),
 ```
+
+A última coluna (`ida_de`) adia o começo da janela de ida só para aquela rota. Maceió, Natal e Aracaju usam `2027-02-01` para não buscar janeiro, que é alta temporada no Nordeste.

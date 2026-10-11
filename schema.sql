@@ -75,27 +75,33 @@ CREATE TABLE IF NOT EXISTS historico_google (
     PRIMARY KEY (rota_id, ida, volta, dia)
 );
 
+-- Janela de ida própria da rota para as buscas na SerpApi (vazia = janela global IDA_DE/IDA_ATE).
+ALTER TABLE rotas ADD COLUMN IF NOT EXISTS ida_de date;
+ALTER TABLE rotas ADD COLUMN IF NOT EXISTS ida_ate date;
+
 -- Lista de rotas: esta é a fonte da verdade. Para tirar uma rota, mude ativa para false
--- (o histórico dela continua no banco); para incluir, acrescente uma linha.
-INSERT INTO rotas (nome, destino_tp, destino_serpapi, ativa) VALUES
-    ('Lisboa',    'LIS', 'LIS',     true),
-    ('Madri',     'MAD', 'MAD',     true),
-    ('Paris',     'PAR', 'CDG,ORY', true),
-    ('Roma',      'ROM', 'FCO',     true),
-    ('Londres',   'LON', 'LHR,LGW', true),
-    ('Frankfurt', 'FRA', 'FRA',     true),
-    ('Munique',   'MUC', 'MUC',     true),
-    ('Berlim',    'BER', 'BER',     true),
-    ('Amsterdã',  'AMS', 'AMS',     true),
-    ('Dublin',    'DUB', 'DUB',     true),
-    ('Maceió',    'MCZ', 'MCZ',     true),
-    ('Natal',     'NAT', 'NAT',     true),
-    ('Aracaju',   'AJU', 'AJU',     true),
-    ('Santiago',  'SCL', 'SCL',     false),
-    ('Orlando',   'ORL', 'MCO',     false),
-    ('Nova York', 'NYC', 'JFK,EWR', false)
+-- (o histórico dela continua no banco); para incluir, acrescente uma linha. ida_de adia o início
+-- da janela só para aquela rota (ex.: Nordeste só a partir de fevereiro, fora da alta temporada).
+INSERT INTO rotas (nome, destino_tp, destino_serpapi, ativa, ida_de) VALUES
+    ('Lisboa',    'LIS', 'LIS',     true,  NULL),
+    ('Madri',     'MAD', 'MAD',     true,  NULL),
+    ('Paris',     'PAR', 'CDG,ORY', true,  NULL),
+    ('Roma',      'ROM', 'FCO',     true,  NULL),
+    ('Londres',   'LON', 'LHR,LGW', true,  NULL),
+    ('Frankfurt', 'FRA', 'FRA',     true,  NULL),
+    ('Munique',   'MUC', 'MUC',     true,  NULL),
+    ('Berlim',    'BER', 'BER',     true,  NULL),
+    ('Amsterdã',  'AMS', 'AMS',     true,  NULL),
+    ('Dublin',    'DUB', 'DUB',     true,  NULL),
+    ('Maceió',    'MCZ', 'MCZ',     true,  DATE '2027-02-01'),
+    ('Natal',     'NAT', 'NAT',     true,  DATE '2027-02-01'),
+    ('Aracaju',   'AJU', 'AJU',     true,  DATE '2027-02-01'),
+    ('Santiago',  'SCL', 'SCL',     false, NULL),
+    ('Orlando',   'ORL', 'MCO',     false, NULL),
+    ('Nova York', 'NYC', 'JFK,EWR', false, NULL)
 ON CONFLICT (origem, destino_tp) DO UPDATE
-    SET nome = EXCLUDED.nome, destino_serpapi = EXCLUDED.destino_serpapi, ativa = EXCLUDED.ativa;
+    SET nome = EXCLUDED.nome, destino_serpapi = EXCLUDED.destino_serpapi,
+        ativa = EXCLUDED.ativa, ida_de = EXCLUDED.ida_de;
 
 -- Alertas já enviados, para não repetir o mesmo aviso todo dia.
 CREATE TABLE IF NOT EXISTS alertas (

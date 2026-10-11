@@ -148,3 +148,16 @@ def test_respeita_orcamento_do_dia(conn, monkeypatch):
     monkeypatch.setattr(fontes, "serp_voos", lambda *a: feitas.append(a) or resposta_serp())
     coletor.buscar_serpapi(conn, rotas(conn), date(2026, 10, 11))   # 40 restantes / 21 dias = 2
     assert len(feitas) == 2
+
+
+def test_janela_propria_do_nordeste(conn, monkeypatch):
+    monkeypatch.setattr(coletor, "IDA_DE", "2027-01-01")
+    monkeypatch.setattr(coletor, "IDA_ATE", "2027-03-31")
+    mcz = conn.execute("SELECT id FROM rotas WHERE destino_tp = 'MCZ'").fetchone()[0]
+    for ida, preco in ((date(2027, 1, 10), 900), (date(2027, 2, 20), 1400)):
+        conn.execute("INSERT INTO precos_tp (coletado_em, rota_id, ida, volta, dias, preco) "
+                     "VALUES (%s, %s, %s, %s, 10, %s)", (HOJE, mcz, ida, ida + timedelta(days=10), preco))
+    candidatas = {c[3]: c for c in coletor.escolher_buscas(conn, rotas(conn), HOJE)}
+    assert candidatas["Maceió"][4] == date(2027, 2, 20)        # janeiro fica de fora no Nordeste
+    assert candidatas["Natal"][4] == date(2027, 2, 15)         # sem dados: fevereiro + 14 dias
+    assert candidatas["Lisboa"][4] == date(2027, 1, 15)        # Europa continua com janeiro
