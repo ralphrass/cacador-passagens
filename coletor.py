@@ -6,6 +6,7 @@
    seguindo a agenda por antecedência ou quando há uma queda forte de preço.
 """
 import logging
+import math
 import os
 import statistics
 from datetime import date, datetime, timedelta, timezone
@@ -193,6 +194,13 @@ def gravar_busca(conn, rota_id, ida, volta, motivo, dados):
     return busca_id
 
 
+def orcamento_do_dia(usadas, hoje):
+    """Divide o que sobra da cota do mês igualmente pelos dias que faltam (incluindo hoje)."""
+    proximo_mes = (hoje.replace(day=28) + timedelta(days=4)).replace(day=1)
+    dias_restantes = (proximo_mes - hoje).days
+    return max(0, math.ceil((LIMITE_MENSAL - usadas) / dias_restantes))
+
+
 def buscar_serpapi(conn, rotas, hoje):
     origem_por_rota = {r[0]: (r[2], r[4]) for r in rotas}
     try:
@@ -200,9 +208,14 @@ def buscar_serpapi(conn, rotas, hoje):
     except Exception as e:
         log.error("Não consegui ler a cota da SerpApi; pulando buscas pagas: %s", _erro(e))
         return
-    for motivo, _, rota_id, nome, ida, volta in escolher_buscas(conn, rotas, hoje):
-        if usadas >= LIMITE_MENSAL:
-            log.info("Cota do mês atingida (%d/%d); parando", usadas, LIMITE_MENSAL)
+    candidatas = escolher_buscas(conn, rotas, hoje)
+    orcamento = orcamento_do_dia(usadas, hoje)
+    log.info("SerpApi: %d rota(s) pedem busca; orçamento de hoje %d (usadas no mês: %d/%d)",
+             len(candidatas), orcamento, usadas, LIMITE_MENSAL)
+    feitas = 0
+    for motivo, _, rota_id, nome, ida, volta in candidatas:
+        if feitas >= orcamento:
+            log.info("Orçamento do dia esgotado; as demais rotas ficam para amanhã")
             break
         origem, destino = origem_por_rota[rota_id]
         try:
@@ -210,7 +223,7 @@ def buscar_serpapi(conn, rotas, hoje):
         except Exception as e:
             log.error("SerpApi falhou para %s: %s", nome, _erro(e))
             continue
-        usadas += 1
+        feitas += 1
         gravar_busca(conn, rota_id, ida, volta, motivo, dados)
         conn.commit()
         log.info("SerpApi %s %s a %s (%s): menor R$ %s", nome, ida, volta, motivo,

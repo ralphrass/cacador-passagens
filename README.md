@@ -4,7 +4,7 @@ Roda uma vez por dia no Railway, às 7h de Brasília (10:00 UTC, mude com `HORA_
 
 | Tabela | O que guarda | Fonte |
 |---|---|---|
-| `rotas` | As 10 rotas ativas saindo de GRU (Lisboa, Madri, Paris, Roma, Londres, Frankfurt, Munique, Berlim, Amsterdã, Dublin) | lista no `schema.sql` |
+| `rotas` | As 13 rotas ativas saindo de GRU (Lisboa, Madri, Paris, Roma, Londres, Frankfurt, Munique, Berlim, Amsterdã, Dublin, Maceió, Natal, Aracaju) | lista no `schema.sql` |
 | `precos_tp` | Ida e volta de 7 a 15 dias nos próximos 6 meses, um retrato por dia | Travelpayouts (grátis) |
 | `descoberta` | Destinos mais baratos saindo de São Paulo | Travelpayouts (grátis) |
 | `buscas` + `ofertas` | Busca confirmada no Google Flights: menor preço, nível, faixa típica e voos | SerpApi (cota) |
@@ -17,7 +17,7 @@ Para cada rota, o coletor pega o par de datas mais barato visto hoje na Travelpa
 - **agenda:** já passou o intervalo desde a última busca da rota (viagem a mais de 60 dias: 7 dias; de 30 a 60: 3 dias; menos de 30: diário), ou
 - **queda:** o preço de hoje está mais de 15% abaixo da mediana dos últimos 30 dias.
 
-Antes de buscar, consulta o uso do mês na conta (não gasta cota) e para em `LIMITE_MENSAL_SERPAPI` (padrão 220 de 250).
+Antes de buscar, consulta o uso do mês na conta (não gasta cota) e divide o que falta até `LIMITE_MENSAL_SERPAPI` (padrão 220 de 250) igualmente pelos dias restantes do mês. Se num dia mais rotas pedirem busca do que o orçamento permite, as quedas vão primeiro e depois as rotas buscadas há mais tempo; o resto fica para o dia seguinte.
 
 ## Alertas por e-mail
 

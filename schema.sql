@@ -88,6 +88,9 @@ INSERT INTO rotas (nome, destino_tp, destino_serpapi, ativa) VALUES
     ('Berlim',    'BER', 'BER',     true),
     ('Amsterdã',  'AMS', 'AMS',     true),
     ('Dublin',    'DUB', 'DUB',     true),
+    ('Maceió',    'MCZ', 'MCZ',     true),
+    ('Natal',     'NAT', 'NAT',     true),
+    ('Aracaju',   'AJU', 'AJU',     true),
     ('Santiago',  'SCL', 'SCL',     false),
     ('Orlando',   'ORL', 'MCO',     false),
     ('Nova York', 'NYC', 'JFK,EWR', false)

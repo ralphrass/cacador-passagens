@@ -72,13 +72,14 @@ def test_tp_filtra_duracao_e_aeroporto(conn, monkeypatch):
 
 
 def test_primeira_execucao_busca_todas_as_rotas(conn, monkeypatch):
+    monkeypatch.setattr(coletor, "LIMITE_MENSAL", 1000)
     feitas = []
     monkeypatch.setattr(fontes, "serp_uso_mes", lambda: 0)
     monkeypatch.setattr(fontes, "serp_voos",
                         lambda o, d, i, v: feitas.append(d) or resposta_serp())
     coletor.buscar_serpapi(conn, rotas(conn), HOJE)
-    assert len(feitas) == 10
-    assert conn.execute("SELECT count(*) FROM historico_google").fetchone()[0] == 20
+    assert len(feitas) == 13
+    assert conn.execute("SELECT count(*) FROM historico_google").fetchone()[0] == 26
     assert conn.execute("SELECT trajeto FROM ofertas LIMIT 1").fetchone()[0] == "GRU > LIS"
 
 
@@ -86,7 +87,7 @@ def test_respeita_limite_mensal(conn, monkeypatch):
     feitas = []
     monkeypatch.setattr(fontes, "serp_uso_mes", lambda: coletor.LIMITE_MENSAL - 2)
     monkeypatch.setattr(fontes, "serp_voos", lambda *a: feitas.append(a) or resposta_serp())
-    coletor.buscar_serpapi(conn, rotas(conn), HOJE)
+    coletor.buscar_serpapi(conn, rotas(conn), date(2026, 10, 31))   # último dia: usa as 2 que sobram
     assert len(feitas) == 2
 
 
@@ -118,7 +119,7 @@ def test_lista_de_rotas_desativa_sem_apagar(conn):
     conn.execute("INSERT INTO buscas (rota_id, ida, volta, motivo) VALUES (%s, '2027-02-19', '2027-03-02', 'agenda')", (scl,))
     conn.execute(open(os.path.join(os.path.dirname(coletor.__file__), "schema.sql")).read())
     ativas = [r[1] for r in rotas(conn)]
-    assert "Santiago" not in ativas and "Frankfurt" in ativas and len(ativas) == 10
+    assert "Santiago" not in ativas and "Frankfurt" in ativas and len(ativas) == 13
     assert conn.execute("SELECT count(*) FROM buscas WHERE rota_id = %s", (scl,)).fetchone()[0] == 1
 
 
@@ -133,3 +134,17 @@ def test_janela_de_ida(conn, monkeypatch):
     assert candidatas["Lisboa"][4] == date(2027, 1, 20)        # ignora novembro e abril, mais baratos
     assert candidatas["Madri"][4] == date(2027, 1, 15)         # sem dados: meio de janeiro
     assert coletor.janela_ida(date(2027, 3, 1)) is None        # janela vencida: sem restrição
+
+
+def test_orcamento_do_dia():
+    assert coletor.orcamento_do_dia(0, date(2026, 10, 11)) == 11          # 220 / 21 dias
+    assert coletor.orcamento_do_dia(200, date(2026, 10, 31)) == 20         # último dia: tudo que sobra
+    assert coletor.orcamento_do_dia(230, date(2026, 10, 20)) == 0
+
+
+def test_respeita_orcamento_do_dia(conn, monkeypatch):
+    feitas = []
+    monkeypatch.setattr(fontes, "serp_uso_mes", lambda: coletor.LIMITE_MENSAL - 40)
+    monkeypatch.setattr(fontes, "serp_voos", lambda *a: feitas.append(a) or resposta_serp())
+    coletor.buscar_serpapi(conn, rotas(conn), date(2026, 10, 11))   # 40 restantes / 21 dias = 2
+    assert len(feitas) == 2
