@@ -108,8 +108,9 @@ def test_agenda_semanal_e_queda(conn):
     conn.execute("INSERT INTO precos_tp (coletado_em, rota_id, ida, volta, dias, preco) "
                  "VALUES (%s, %s, %s, %s, 10, 3900)", (HOJE, lis, ida, ida + timedelta(days=10)))
     candidatas = coletor.escolher_buscas(conn, rs, HOJE)
-    # só Lisboa (queda); as demais caem em data padrão (45 dias -> a cada 3 dias), ainda não devidas
-    assert [(c[0], c[3]) for c in candidatas] == [("queda", "Lisboa")]
+    # Lisboa (queda) vem primeiro; da Europa, só ela. O Nordeste cai em 01/11 (28 dias -> diário)
+    assert (candidatas[0][0], candidatas[0][3]) == ("queda", "Lisboa")
+    assert {c[3] for c in candidatas[1:]} == {"Maceió", "Natal", "Aracaju"}
 
 
 def test_lista_de_rotas_desativa_sem_apagar(conn):
@@ -150,14 +151,20 @@ def test_respeita_orcamento_do_dia(conn, monkeypatch):
     assert len(feitas) == 2
 
 
-def test_janela_propria_do_nordeste(conn, monkeypatch):
+def test_meses_do_nordeste(conn, monkeypatch):
     monkeypatch.setattr(coletor, "IDA_DE", "2027-01-01")
     monkeypatch.setattr(coletor, "IDA_ATE", "2027-03-31")
     mcz = conn.execute("SELECT id FROM rotas WHERE destino_tp = 'MCZ'").fetchone()[0]
-    for ida, preco in ((date(2027, 1, 10), 900), (date(2027, 2, 20), 1400)):
+    for ida, preco in ((date(2027, 1, 10), 700), (date(2026, 12, 5), 1600), (date(2027, 2, 20), 1400)):
         conn.execute("INSERT INTO precos_tp (coletado_em, rota_id, ida, volta, dias, preco) "
                      "VALUES (%s, %s, %s, %s, 10, %s)", (HOJE, mcz, ida, ida + timedelta(days=10), preco))
     candidatas = {c[3]: c for c in coletor.escolher_buscas(conn, rotas(conn), HOJE)}
-    assert candidatas["Maceió"][4] == date(2027, 2, 20)        # janeiro fica de fora no Nordeste
-    assert candidatas["Natal"][4] == date(2027, 2, 15)         # sem dados: fevereiro + 14 dias
-    assert candidatas["Lisboa"][4] == date(2027, 1, 15)        # Europa continua com janeiro
+    assert candidatas["Maceió"][4] == date(2027, 2, 20)        # janeiro fica de fora
+    assert candidatas["Natal"][4] == date(2026, 11, 1)         # sem dados: primeiro dia aceito após 14 dias
+    assert candidatas["Lisboa"][4] == date(2027, 1, 15)        # Europa continua na janela jan-mar
+
+
+def test_primeira_data_nos_meses():
+    assert coletor.primeira_data_nos_meses(date(2026, 10, 18), [11, 12, 2, 3]) == date(2026, 11, 1)
+    assert coletor.primeira_data_nos_meses(date(2026, 12, 20), [11, 12, 2, 3]) == date(2026, 12, 20)
+    assert coletor.primeira_data_nos_meses(date(2026, 12, 31) + timedelta(days=1), [11, 12, 2, 3]) == date(2027, 2, 1)

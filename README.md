@@ -68,4 +68,4 @@ A lista no fim do `schema.sql` é a fonte da verdade e é aplicada no início de
     ('Viena',     'VIE', 'VIE',     true,  NULL),
 ```
 
-A última coluna (`ida_de`) adia o começo da janela de ida só para aquela rota. Maceió, Natal e Aracaju usam `2027-02-01` para não buscar janeiro, que é alta temporada no Nordeste.
+A última coluna (`meses_ida`) limita as idas daquela rota a certos meses e, quando preenchida, substitui a janela global. Maceió, Natal e Aracaju usam `'{11,12,2,3}'`: novembro, dezembro, fevereiro e março, sem janeiro.

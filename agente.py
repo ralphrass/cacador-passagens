@@ -70,7 +70,8 @@ def preferencia():
         return ""
     return (f"O Ralph quer viajar com ida entre {date.fromisoformat(de):%d/%m/%Y} e "
             f"{date.fromisoformat(ate):%d/%m/%Y}; priorize essas datas quando a pergunta não disser outra época. "
-            "Para o Nordeste (Maceió, Natal, Aracaju), ele não quer janeiro (alta temporada).")
+            "Para o Nordeste (Maceió, Natal, Aracaju), ele quer ida em novembro, dezembro, fevereiro ou "
+            "março, nunca janeiro (alta temporada).")
 
 
 def responder(historico):

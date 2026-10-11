@@ -120,23 +120,40 @@ def janela_ida(hoje, de=None, ate=None):
     return inicio, ate
 
 
+def primeira_data_nos_meses(a_partir, meses):
+    d = a_partir
+    while d.month not in meses:
+        d = (d.replace(day=28) + timedelta(days=4)).replace(day=1)
+    return d
+
+
 def escolher_buscas(conn, rotas, hoje):
     """Uma candidata por rota: o par de datas mais barato visto hoje na Travelpayouts."""
     candidatas = []
     for rota_id, nome, *_ in rotas:
-        janela = janela_ida(hoje, *conn.execute(
-            "SELECT ida_de, ida_ate FROM rotas WHERE id = %s", (rota_id,)).fetchone())
-        ida_min, ida_max = janela or (hoje + timedelta(days=7), date.max)
+        de, ate, meses = conn.execute(
+            "SELECT ida_de, ida_ate, meses_ida FROM rotas WHERE id = %s", (rota_id,)).fetchone()
+        if meses:  # meses próprios da rota (ex.: Nordeste): ignora a janela global
+            janela = None
+            ida_min, ida_max = hoje + timedelta(days=7), date.max
+        else:
+            janela = janela_ida(hoje, de, ate)
+            ida_min, ida_max = janela or (hoje + timedelta(days=7), date.max)
         melhor = conn.execute(
             """SELECT ida, volta, preco FROM precos_tp
                WHERE rota_id = %s AND coletado_em::date = %s AND ida BETWEEN %s AND %s
+                 AND (%s::int[] IS NULL OR extract(month FROM ida)::int = ANY(%s::int[]))
                ORDER BY preco LIMIT 1""",
-            (rota_id, hoje, ida_min, ida_max)).fetchone()
+            (rota_id, hoje, ida_min, ida_max, meses, meses)).fetchone()
         if melhor:
             ida, volta, preco = melhor
         else:  # sem dados da Travelpayouts: início da janela (ou daqui a 45 dias), 10 dias de viagem
-            ida = ida_min + timedelta(days=14) if janela else hoje + timedelta(days=45)
-            ida, preco = min(ida, ida_max), None
+            if meses:
+                ida = primeira_data_nos_meses(hoje + timedelta(days=14), meses)
+            else:
+                ida = ida_min + timedelta(days=14) if janela else hoje + timedelta(days=45)
+                ida = min(ida, ida_max)
+            preco = None
             volta = ida + timedelta(days=10)
 
         ultima = conn.execute(
@@ -150,8 +167,9 @@ def escolher_buscas(conn, rotas, hoje):
                 """SELECT min(preco) FROM precos_tp
                    WHERE rota_id = %s AND coletado_em >= %s AND coletado_em::date < %s
                      AND ida BETWEEN %s AND %s
+                     AND (%s::int[] IS NULL OR extract(month FROM ida)::int = ANY(%s::int[]))
                    GROUP BY coletado_em::date""",
-                (rota_id, hoje - timedelta(days=30), hoje, ida_min, ida_max))]
+                (rota_id, hoje - timedelta(days=30), hoje, ida_min, ida_max, meses, meses))]
             if len(recentes) >= 5 and preco < QUEDA * statistics.median(recentes):
                 queda = True
 

@@ -78,11 +78,13 @@ CREATE TABLE IF NOT EXISTS historico_google (
 -- Janela de ida própria da rota para as buscas na SerpApi (vazia = janela global IDA_DE/IDA_ATE).
 ALTER TABLE rotas ADD COLUMN IF NOT EXISTS ida_de date;
 ALTER TABLE rotas ADD COLUMN IF NOT EXISTS ida_ate date;
+-- Meses de ida aceitos pela rota (1 a 12). Quando preenchido, substitui a janela.
+ALTER TABLE rotas ADD COLUMN IF NOT EXISTS meses_ida int[];
 
 -- Lista de rotas: esta é a fonte da verdade. Para tirar uma rota, mude ativa para false
--- (o histórico dela continua no banco); para incluir, acrescente uma linha. ida_de adia o início
--- da janela só para aquela rota (ex.: Nordeste só a partir de fevereiro, fora da alta temporada).
-INSERT INTO rotas (nome, destino_tp, destino_serpapi, ativa, ida_de) VALUES
+-- (o histórico dela continua no banco); para incluir, acrescente uma linha. meses_ida limita as
+-- idas daquela rota a certos meses (ex.: Nordeste em nov, dez, fev e mar, sem janeiro).
+INSERT INTO rotas (nome, destino_tp, destino_serpapi, ativa, meses_ida) VALUES
     ('Lisboa',    'LIS', 'LIS',     true,  NULL),
     ('Madri',     'MAD', 'MAD',     true,  NULL),
     ('Paris',     'PAR', 'CDG,ORY', true,  NULL),
@@ -93,15 +95,15 @@ INSERT INTO rotas (nome, destino_tp, destino_serpapi, ativa, ida_de) VALUES
     ('Berlim',    'BER', 'BER',     true,  NULL),
     ('Amsterdã',  'AMS', 'AMS',     true,  NULL),
     ('Dublin',    'DUB', 'DUB',     true,  NULL),
-    ('Maceió',    'MCZ', 'MCZ',     true,  DATE '2027-02-01'),
-    ('Natal',     'NAT', 'NAT',     true,  DATE '2027-02-01'),
-    ('Aracaju',   'AJU', 'AJU',     true,  DATE '2027-02-01'),
+    ('Maceió',    'MCZ', 'MCZ',     true,  '{11,12,2,3}'),
+    ('Natal',     'NAT', 'NAT',     true,  '{11,12,2,3}'),
+    ('Aracaju',   'AJU', 'AJU',     true,  '{11,12,2,3}'),
     ('Santiago',  'SCL', 'SCL',     false, NULL),
     ('Orlando',   'ORL', 'MCO',     false, NULL),
     ('Nova York', 'NYC', 'JFK,EWR', false, NULL)
 ON CONFLICT (origem, destino_tp) DO UPDATE
     SET nome = EXCLUDED.nome, destino_serpapi = EXCLUDED.destino_serpapi,
-        ativa = EXCLUDED.ativa, ida_de = EXCLUDED.ida_de;
+        ativa = EXCLUDED.ativa, meses_ida = EXCLUDED.meses_ida, ida_de = NULL;
 
 -- Alertas já enviados, para não repetir o mesmo aviso todo dia.
 CREATE TABLE IF NOT EXISTS alertas (
