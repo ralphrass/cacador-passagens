@@ -71,6 +71,26 @@ def test_tp_filtra_duracao_e_aeroporto(conn, monkeypatch):
     assert linhas[0][0] == 10 and linhas[0][2] == "https://www.aviasales.com/x"
 
 
+def test_passo_fundo_qualquer_aeroporto_de_sp_e_viagem_curta(conn, monkeypatch):
+    monkeypatch.setattr(coletor, "MESES_A_FRENTE", 1)
+    monkeypatch.setattr(fontes, "tp_ida_volta", lambda destino, mes: [
+        {"price": 900, "departure_at": "2026-11-13T10:00:00-03:00",
+         "return_at": "2026-11-15T10:00:00+00:00", "origin_airport": "VCP"},   # fim de semana
+        {"price": 800, "departure_at": "2026-11-13T10:00:00-03:00",
+         "return_at": "2026-11-14T10:00:00+00:00", "origin_airport": "CGH"},   # 1 dia: curto demais
+        {"price": 700, "departure_at": "2026-11-13T10:00:00-03:00",
+         "return_at": "2026-11-20T10:00:00+00:00", "origin_airport": "POA"},   # fora de SP
+    ])
+    pfb = [r for r in rotas(conn) if r[3] == "PFB"]
+    assert pfb[0][2] == "GRU,CGH,VCP" and pfb[0][4] == "PFB"
+    coletor.coletar_tp(conn, pfb, HOJE)
+    assert conn.execute("SELECT dias, preco FROM precos_tp").fetchall() == [(2, 900)]
+    # qualquer mês vale: a candidata é o par mais barato de hoje, mesmo fora de jan-mar
+    conn.execute("UPDATE precos_tp SET coletado_em = %s", (HOJE,))
+    c = coletor.escolher_buscas(conn, pfb, HOJE)
+    assert [(x[4], x[5]) for x in c] == [(date(2026, 11, 13), date(2026, 11, 15))]
+
+
 def test_primeira_execucao_busca_todas_as_rotas(conn, monkeypatch):
     monkeypatch.setattr(coletor, "LIMITE_MENSAL", 1000)
     feitas = []
@@ -78,8 +98,8 @@ def test_primeira_execucao_busca_todas_as_rotas(conn, monkeypatch):
     monkeypatch.setattr(fontes, "serp_voos",
                         lambda o, d, i, v: feitas.append(d) or resposta_serp())
     coletor.buscar_serpapi(conn, rotas(conn), HOJE)
-    assert len(feitas) == 13
-    assert conn.execute("SELECT count(*) FROM historico_google").fetchone()[0] == 26
+    assert len(feitas) == 14
+    assert conn.execute("SELECT count(*) FROM historico_google").fetchone()[0] == 28
     assert conn.execute("SELECT trajeto FROM ofertas LIMIT 1").fetchone()[0] == "GRU > LIS"
 
 
@@ -108,9 +128,10 @@ def test_agenda_semanal_e_queda(conn):
     conn.execute("INSERT INTO precos_tp (coletado_em, rota_id, ida, volta, dias, preco) "
                  "VALUES (%s, %s, %s, %s, 10, 3900)", (HOJE, lis, ida, ida + timedelta(days=10)))
     candidatas = coletor.escolher_buscas(conn, rs, HOJE)
-    # Lisboa (queda) vem primeiro; da Europa, só ela. O Nordeste cai em 01/11 (28 dias -> diário)
+    # Lisboa (queda) vem primeiro; da Europa, só ela. O Nordeste cai em 01/11 e Passo Fundo
+    # em hoje + 14 (menos de 30 dias -> diário)
     assert (candidatas[0][0], candidatas[0][3]) == ("queda", "Lisboa")
-    assert {c[3] for c in candidatas[1:]} == {"Maceió", "Natal", "Aracaju"}
+    assert {c[3] for c in candidatas[1:]} == {"Maceió", "Natal", "Aracaju", "Passo Fundo"}
 
 
 def test_lista_de_rotas_desativa_sem_apagar(conn):
@@ -120,7 +141,7 @@ def test_lista_de_rotas_desativa_sem_apagar(conn):
     conn.execute("INSERT INTO buscas (rota_id, ida, volta, motivo) VALUES (%s, '2027-02-19', '2027-03-02', 'agenda')", (scl,))
     conn.execute(open(os.path.join(os.path.dirname(coletor.__file__), "schema.sql")).read())
     ativas = [r[1] for r in rotas(conn)]
-    assert "Santiago" not in ativas and "Frankfurt" in ativas and len(ativas) == 13
+    assert "Santiago" not in ativas and "Frankfurt" in ativas and len(ativas) == 14
     assert conn.execute("SELECT count(*) FROM buscas WHERE rota_id = %s", (scl,)).fetchone()[0] == 1
 
 

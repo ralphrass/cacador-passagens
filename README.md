@@ -4,7 +4,7 @@ Roda uma vez por dia no Railway, às 7h de Brasília (10:00 UTC, mude com `HORA_
 
 | Tabela | O que guarda | Fonte |
 |---|---|---|
-| `rotas` | As 13 rotas ativas saindo de GRU (Lisboa, Madri, Paris, Roma, Londres, Frankfurt, Munique, Berlim, Amsterdã, Dublin, Maceió, Natal, Aracaju) | lista no `schema.sql` |
+| `rotas` | As 14 rotas ativas: 13 saindo de GRU (Lisboa, Madri, Paris, Roma, Londres, Frankfurt, Munique, Berlim, Amsterdã, Dublin, Maceió, Natal, Aracaju) e Passo Fundo saindo de GRU, CGH ou VCP, qualquer mês, viagens de 2 a 15 dias | lista no `schema.sql` |
 | `precos_tp` | Ida e volta de 7 a 15 dias nos próximos 6 meses, um retrato por dia | Travelpayouts (grátis) |
 | `descoberta` | Destinos mais baratos saindo de São Paulo | Travelpayouts (grátis) |
 | `buscas` + `ofertas` | Busca confirmada no Google Flights: menor preço, nível, faixa típica e voos | SerpApi (cota) |

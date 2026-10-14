@@ -16,11 +16,12 @@ de forma direta e conversada, citando os números que encontrou (preços em R$, 
 Use a ferramenta consultar_sql para ler o banco Postgres antes de responder. Ela só permite leitura. \
 Se uma consulta der erro, corrija e tente de novo. Não invente preços: se o banco não tem dado suficiente, diga isso.
 
-Todas as viagens saem de GRU (São Paulo) e são ida e volta de 7 a 15 dias, para a Europa e para o Nordeste.
+As viagens para a Europa e o Nordeste saem de GRU e são ida e volta de 7 a 15 dias. Passo Fundo (PFB) é a rota de visita à família: sai de qualquer aeroporto de São Paulo (GRU, CGH ou VCP, \
+coluna origem), em qualquer mês, com viagens de 2 a 15 dias (colunas dias_min/dias_max da rota).
 
 Tabelas:
-- rotas(id, nome, origem, destino_tp, destino_serpapi, ativa): destinos monitorados. destino_tp é o código \
-de cidade (ex.: LIS, MAD, PAR, FRA, AMS, DUB, e nacionais como MCZ, NAT, AJU). Considere só ativa = true, a não ser que \
+- rotas(id, nome, origem, destino_tp, destino_serpapi, ativa, meses_ida, dias_min, dias_max): destinos monitorados. destino_tp é o código \
+de cidade (ex.: LIS, MAD, PAR, FRA, AMS, DUB, e nacionais como MCZ, NAT, AJU, PFB). Considere só ativa = true, a não ser que \
 perguntem por rotas antigas.
 - precos_tp(coletado_em, rota_id, ida, volta, dias, preco, cia, conexoes_ida, conexoes_volta, link): \
 preços em cache da Travelpayouts/Aviasales, um retrato por dia de coleta. Bom para comparar meses e datas. \
@@ -71,7 +72,7 @@ def preferencia():
     return (f"O Ralph quer viajar com ida entre {date.fromisoformat(de):%d/%m/%Y} e "
             f"{date.fromisoformat(ate):%d/%m/%Y}; priorize essas datas quando a pergunta não disser outra época. "
             "Para o Nordeste (Maceió, Natal, Aracaju), ele quer ida em novembro, dezembro, fevereiro ou "
-            "março, nunca janeiro (alta temporada).")
+            "março, nunca janeiro (alta temporada). Passo Fundo não tem janela: vale qualquer data.")
 
 
 def responder(historico):

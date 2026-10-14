@@ -1,6 +1,6 @@
 """Coletor diário de preços de passagens.
 
-1. Travelpayouts (grátis): ida e volta de 7 a 15 dias para cada rota, próximos meses.
+1. Travelpayouts (grátis): ida e volta de 7 a 15 dias (ou o que a rota definir) para cada rota, próximos meses.
 2. Travelpayouts (grátis): descoberta "de GRU para qualquer lugar".
 3. SerpApi (cota): confirma no Google Flights o par de datas mais barato de cada rota,
    seguindo a agenda por antecedência ou quando há uma queda forte de preço.
@@ -62,6 +62,9 @@ def _data(texto):
 def coletar_tp(conn, rotas, hoje):
     total = 0
     for rota_id, _, origem, destino_tp, _ in rotas:
+        dias_min, dias_max = conn.execute(
+            "SELECT coalesce(dias_min, %s), coalesce(dias_max, %s) FROM rotas WHERE id = %s",
+            (DIAS_MIN, DIAS_MAX, rota_id)).fetchone()
         for mes in meses_seguintes(hoje, MESES_A_FRENTE):
             try:
                 itens = fontes.tp_ida_volta(destino_tp, mes)
@@ -72,10 +75,10 @@ def coletar_tp(conn, rotas, hoje):
                 ida, volta = _data(v.get("departure_at")), _data(v.get("return_at"))
                 if not ida or not volta or ida <= hoje:
                     continue
-                if v.get("origin_airport") and v["origin_airport"] != origem:
+                if v.get("origin_airport") and v["origin_airport"] not in origem.split(","):
                     continue
                 dias = (volta - ida).days
-                if not DIAS_MIN <= dias <= DIAS_MAX:
+                if not dias_min <= dias <= dias_max:
                     continue
                 conn.execute(
                     """INSERT INTO precos_tp (rota_id, ida, volta, dias, preco, cia,

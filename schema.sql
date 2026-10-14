@@ -80,30 +80,36 @@ ALTER TABLE rotas ADD COLUMN IF NOT EXISTS ida_de date;
 ALTER TABLE rotas ADD COLUMN IF NOT EXISTS ida_ate date;
 -- Meses de ida aceitos pela rota (1 a 12). Quando preenchido, substitui a janela.
 ALTER TABLE rotas ADD COLUMN IF NOT EXISTS meses_ida int[];
+ALTER TABLE rotas ADD COLUMN IF NOT EXISTS dias_min int;
+ALTER TABLE rotas ADD COLUMN IF NOT EXISTS dias_max int;
 
 -- Lista de rotas: esta é a fonte da verdade. Para tirar uma rota, mude ativa para false
 -- (o histórico dela continua no banco); para incluir, acrescente uma linha. meses_ida limita as
 -- idas daquela rota a certos meses (ex.: Nordeste em nov, dez, fev e mar, sem janeiro).
-INSERT INTO rotas (nome, destino_tp, destino_serpapi, ativa, meses_ida) VALUES
-    ('Lisboa',    'LIS', 'LIS',     true,  NULL),
-    ('Madri',     'MAD', 'MAD',     true,  NULL),
-    ('Paris',     'PAR', 'CDG,ORY', true,  NULL),
-    ('Roma',      'ROM', 'FCO',     true,  NULL),
-    ('Londres',   'LON', 'LHR,LGW', true,  NULL),
-    ('Frankfurt', 'FRA', 'FRA',     true,  NULL),
-    ('Munique',   'MUC', 'MUC',     true,  NULL),
-    ('Berlim',    'BER', 'BER',     true,  NULL),
-    ('Amsterdã',  'AMS', 'AMS',     true,  NULL),
-    ('Dublin',    'DUB', 'DUB',     true,  NULL),
-    ('Maceió',    'MCZ', 'MCZ',     true,  '{11,12,2,3}'),
-    ('Natal',     'NAT', 'NAT',     true,  '{11,12,2,3}'),
-    ('Aracaju',   'AJU', 'AJU',     true,  '{11,12,2,3}'),
-    ('Santiago',  'SCL', 'SCL',     false, NULL),
-    ('Orlando',   'ORL', 'MCO',     false, NULL),
-    ('Nova York', 'NYC', 'JFK,EWR', false, NULL)
+-- Passo Fundo: qualquer mês (visitas à família), saindo de qualquer aeroporto de São Paulo,
+-- viagens de 2 a 15 dias. Nas demais rotas, dias_min/dias_max vazios = 7 a 15 dias.
+INSERT INTO rotas (nome, origem, destino_tp, destino_serpapi, ativa, meses_ida, dias_min, dias_max) VALUES
+    ('Lisboa',      'GRU',         'LIS', 'LIS',     true,   NULL,                             NULL,  NULL),
+    ('Madri',       'GRU',         'MAD', 'MAD',     true,   NULL,                             NULL,  NULL),
+    ('Paris',       'GRU',         'PAR', 'CDG,ORY', true,   NULL,                             NULL,  NULL),
+    ('Roma',        'GRU',         'ROM', 'FCO',     true,   NULL,                             NULL,  NULL),
+    ('Londres',     'GRU',         'LON', 'LHR,LGW', true,   NULL,                             NULL,  NULL),
+    ('Frankfurt',   'GRU',         'FRA', 'FRA',     true,   NULL,                             NULL,  NULL),
+    ('Munique',     'GRU',         'MUC', 'MUC',     true,   NULL,                             NULL,  NULL),
+    ('Berlim',      'GRU',         'BER', 'BER',     true,   NULL,                             NULL,  NULL),
+    ('Amsterdã',    'GRU',         'AMS', 'AMS',     true,   NULL,                             NULL,  NULL),
+    ('Dublin',      'GRU',         'DUB', 'DUB',     true,   NULL,                             NULL,  NULL),
+    ('Maceió',      'GRU',         'MCZ', 'MCZ',     true,   '{11,12,2,3}',                    NULL,  NULL),
+    ('Natal',       'GRU',         'NAT', 'NAT',     true,   '{11,12,2,3}',                    NULL,  NULL),
+    ('Aracaju',     'GRU',         'AJU', 'AJU',     true,   '{11,12,2,3}',                    NULL,  NULL),
+    ('Passo Fundo', 'GRU,CGH,VCP', 'PFB', 'PFB',     true,   '{1,2,3,4,5,6,7,8,9,10,11,12}',   2,     15),
+    ('Santiago',    'GRU',         'SCL', 'SCL',     false,  NULL,                             NULL,  NULL),
+    ('Orlando',     'GRU',         'ORL', 'MCO',     false,  NULL,                             NULL,  NULL),
+    ('Nova York',   'GRU',         'NYC', 'JFK,EWR', false,  NULL,                             NULL,  NULL)
 ON CONFLICT (origem, destino_tp) DO UPDATE
     SET nome = EXCLUDED.nome, destino_serpapi = EXCLUDED.destino_serpapi,
-        ativa = EXCLUDED.ativa, meses_ida = EXCLUDED.meses_ida, ida_de = NULL;
+        ativa = EXCLUDED.ativa, meses_ida = EXCLUDED.meses_ida, ida_de = NULL,
+        dias_min = EXCLUDED.dias_min, dias_max = EXCLUDED.dias_max;
 
 -- Alertas já enviados, para não repetir o mesmo aviso todo dia.
 CREATE TABLE IF NOT EXISTS alertas (

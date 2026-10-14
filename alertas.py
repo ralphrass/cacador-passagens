@@ -62,12 +62,13 @@ def encontrar_alertas(conn, desde_id):
     for b in buscas:
         motivo = motivo_alerta(conn, b)
         if motivo and not ja_avisado(conn, b[1], b[2], b[3], b[4]):
-            nome, aeroportos = conn.execute(
-                "SELECT nome, destino_serpapi FROM rotas WHERE id = %s", (b[1],)).fetchone()
+            nome, aeroportos, origem = conn.execute(
+                "SELECT nome, destino_serpapi, origem FROM rotas WHERE id = %s", (b[1],)).fetchone()
             oferta = conn.execute(
                 """SELECT cias, trajeto, duracao_min FROM ofertas
                    WHERE busca_id = %s ORDER BY preco NULLS LAST LIMIT 1""", (b[0],)).fetchone()
-            achados.append({"busca_id": b[0], "rota_id": b[1], "nome": nome, "aeroporto": aeroportos.split(",")[0], "ida": b[2],
+            achados.append({"busca_id": b[0], "rota_id": b[1], "nome": nome, "aeroporto": aeroportos.split(",")[0],
+                            "origem": origem if "," not in origem else "Sao+Paulo", "ida": b[2],
                             "volta": b[3], "preco": b[4], "faixa": (b[6], b[7]),
                             "motivo": motivo, "oferta": oferta})
     return achados
@@ -76,7 +77,7 @@ def encontrar_alertas(conn, desde_id):
 def montar_email(achados):
     def link(a):
         return ("https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q="
-                + f"Flights+to+{a['aeroporto']}+from+GRU+on+{a['ida']}+through+{a['volta']}")
+                + f"Flights+to+{a['aeroporto']}+from+{a.get('origem', 'GRU')}+on+{a['ida']}+through+{a['volta']}")
 
     achados = sorted(achados, key=lambda a: a["preco"])
     linhas = []
