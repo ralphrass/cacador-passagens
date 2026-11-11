@@ -129,3 +129,10 @@ def test_paginas(banco):
     assert "Assistente" in c.get("/", auth=AUTH).text
     assert "Pergunte" in c.get("/chat", auth=AUTH).text
     assert c.get("/radar", follow_redirects=False).headers["location"] == "/"
+
+
+def test_site_cria_as_tabelas_na_subida(banco):
+    banco.execute("DROP TABLE avisos_regra, regras_alerta, coletas")
+    banco.commit()
+    with TestClient(web.app) as c:                      # o bloco with dispara o evento de subida
+        assert c.get("/api/dados", auth=AUTH).json()["regras"] == []

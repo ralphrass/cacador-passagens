@@ -53,6 +53,16 @@ class Regra(BaseModel):
     mes_ate: int = Field(ge=1, le=12)
 
 
+@app.on_event("startup")
+def preparar_banco():
+    """Cria as tabelas que faltarem, para o site não depender de o coletor já ter rodado depois de um deploy."""
+    try:
+        with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+            conn.execute((Path(__file__).parent / "schema.sql").read_text(encoding="utf-8"))
+    except (KeyError, psycopg.Error):
+        log.exception("Não consegui aplicar o schema.sql na subida")
+
+
 def banco():
     try:
         return psycopg.connect(os.environ["DATABASE_URL"])
