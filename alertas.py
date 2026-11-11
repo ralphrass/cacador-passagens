@@ -6,6 +6,9 @@ Uma busca vira alerta quando:
 - o menor preço cai mais de 15% em relação à mediana das buscas anteriores da rota.
 
 O mesmo trecho (rota + datas) só é avisado de novo se o preço cair mais 5%.
+
+Além disso, cada regra criada no site (tabela regras_alerta) avisa quando o preço diário da
+Travelpayouts fica abaixo do limite escolhido.
 """
 import html
 import logging
@@ -74,6 +77,37 @@ def encontrar_alertas(conn, desde_id):
     return achados
 
 
+def encontrar_por_regras(conn):
+    """Alertas criados no site: o menor preço da coleta mais recente, nos meses da regra, até o limite."""
+    achados = []
+    for regra_id, rota_id, preco_max, mes_de, mes_ate, nome, aeroportos, origem in conn.execute(
+            """SELECT g.id, g.rota_id, g.preco_max, g.mes_de, g.mes_ate, r.nome, r.destino_serpapi, r.origem
+               FROM regras_alerta g JOIN rotas r ON r.id = g.rota_id ORDER BY g.id""").fetchall():
+        melhor = conn.execute(
+            """SELECT ida, volta, preco FROM precos_tp
+               WHERE rota_id = %(r)s
+                 AND coletado_em::date = (SELECT max(coletado_em::date) FROM precos_tp WHERE rota_id = %(r)s)
+                 AND ida > current_date AND preco <= %(max)s
+                 AND CASE WHEN %(de)s <= %(ate)s THEN extract(month FROM ida) BETWEEN %(de)s AND %(ate)s
+                          ELSE extract(month FROM ida) >= %(de)s OR extract(month FROM ida) <= %(ate)s END
+               ORDER BY preco LIMIT 1""",
+            {"r": rota_id, "max": preco_max, "de": mes_de, "ate": mes_ate}).fetchone()
+        if not melhor:
+            continue
+        ida, volta, preco = melhor
+        ultimo = conn.execute(
+            "SELECT preco FROM avisos_regra WHERE regra_id = %s ORDER BY enviado_em DESC LIMIT 1",
+            (regra_id,)).fetchone()
+        if ultimo is not None and preco >= NOVA_QUEDA * ultimo[0]:
+            continue   # já avisado; só repete se cair mais 5%
+        achados.append({"regra_id": regra_id, "rota_id": rota_id, "nome": nome,
+                        "aeroporto": aeroportos.split(",")[0],
+                        "origem": origem if "," not in origem else "Sao+Paulo",
+                        "ida": ida, "volta": volta, "preco": preco, "preco_max": preco_max,
+                        "motivo": f"abaixo do seu limite de {brl(preco_max)}", "oferta": None})
+    return achados
+
+
 def montar_email(achados):
     def link(a):
         return ("https://www.google.com/travel/flights?hl=pt-BR&curr=BRL&q="
@@ -116,7 +150,7 @@ def processar(conn, desde_id):
     if not (os.environ.get("RESEND_API_KEY") and os.environ.get("ALERTA_EMAIL")):
         log.info("Alertas desligados (faltam RESEND_API_KEY ou ALERTA_EMAIL)")
         return
-    achados = encontrar_alertas(conn, desde_id)
+    achados = encontrar_alertas(conn, desde_id) + encontrar_por_regras(conn)
     if not achados:
         log.info("Nenhum alerta hoje")
         return
@@ -128,6 +162,12 @@ def processar(conn, desde_id):
         log.error("Falha ao enviar e-mail: %s %s", type(e).__name__, status or "")
         return
     for a in achados:
+        if "regra_id" in a:
+            conn.execute(
+                """INSERT INTO avisos_regra (regra_id, rota_id, ida, volta, preco, preco_max)
+                   VALUES (%s, %s, %s, %s, %s, %s)""",
+                (a["regra_id"], a["rota_id"], a["ida"], a["volta"], a["preco"], a["preco_max"]))
+            continue
         conn.execute(
             """INSERT INTO alertas (busca_id, rota_id, ida, volta, preco, motivo)
                VALUES (%s, %s, %s, %s, %s, %s)""",

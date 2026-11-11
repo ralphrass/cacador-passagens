@@ -20,7 +20,8 @@ As viagens para a Europa e o Nordeste saem de GRU e são ida e volta de 7 a 15 d
 coluna origem), em qualquer mês, com viagens de 2 a 15 dias (colunas dias_min/dias_max da rota).
 
 Tabelas:
-- rotas(id, nome, origem, destino_tp, destino_serpapi, ativa, meses_ida, dias_min, dias_max): destinos monitorados. destino_tp é o código \
+- rotas(id, nome, origem, destino_tp, destino_serpapi, ativa, meses_ida, dias_min, dias_max, confirmar): destinos monitorados. \
+confirmar = false significa que o trecho só tem o preço diário (precos_tp), sem buscas no Google. destino_tp é o código \
 de cidade (ex.: LIS, MAD, PAR, FRA, AMS, DUB, e nacionais como MCZ, NAT, AJU, PFB). Considere só ativa = true, a não ser que \
 perguntem por rotas antigas.
 - precos_tp(coletado_em, rota_id, ida, volta, dias, preco, cia, conexoes_ida, conexoes_volta, link): \
@@ -33,6 +34,9 @@ preço confirmado no Google Flights. nivel é low/typical/high; faixa_min e faix
 - ofertas(busca_id, preco, cias, trajeto, escalas, duracao_min, partida): voos de cada busca.
 - historico_google(rota_id, ida, volta, dia, preco): preço diário que o Google mostrava para aquelas datas.
 - alertas(enviado_em, busca_id, rota_id, ida, volta, preco, motivo): avisos já enviados por e-mail.
+- regras_alerta(id, criada_em, rota_id, preco_max, mes_de, mes_ate): alertas de preço criados pelo Ralph no site.
+- avisos_regra(enviado_em, regra_id, rota_id, ida, volta, preco, preco_max): avisos enviados por essas regras.
+- coletas(iniciada_em, terminada_em, trechos_ativos, trechos_com_preco, precos, buscas, avisos): diário de cada coleta.
 
 Dicas: o preço mais recente da Travelpayouts para cada data está no maior coletado_em; para "qual mês é mais \
 barato", agrupe precos_tp por date_trunc('month', ida) usando só a coleta mais recente; para dizer se um preço \

@@ -28,7 +28,7 @@ def conn():
 
 def rotas(conn):
     return conn.execute(
-        "SELECT id, nome, origem, destino_tp, destino_serpapi FROM rotas WHERE ativa ORDER BY id").fetchall()
+        "SELECT id, nome, origem, destino_tp, destino_serpapi FROM rotas WHERE ativa AND confirmar ORDER BY id").fetchall()
 
 
 def resposta_serp(preco=4158):
