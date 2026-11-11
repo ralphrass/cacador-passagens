@@ -51,6 +51,10 @@ Para subir no Railway, no mesmo projeto:
 2. Em **Variables**: `SERVICO` = `web`, `PORT` = `8080`, `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`, `ANTHROPIC_API_KEY` (console.anthropic.com) e `APP_SENHA` (a senha da página; o usuário é `ralph`, ou defina `APP_USUARIO`).
 3. Em **Settings > Networking**, clique em **Generate Domain** para ter a URL.
 
+## Radar (página `/radar`)
+
+No mesmo serviço web, `/radar` mostra o que vale a pena agora: um filtro de período dos próximos 6 meses (arrastar sobre as semanas, tocar num mês ou digitar as datas), um mapa com um ponto colorido por destino, a curadoria (no máximo três rotas abaixo da faixa típica) e um termômetro por trecho. `radar.py` monta os dados em `/api/radar`: o menor preço por dia de ida vem da coleta mais recente da `precos_tp`; a faixa típica vem da última busca confirmada no Google (`buscas`) ou, se a rota ainda não tem busca, dos preços coletados nos últimos 90 dias. Os pontos vazados do mapa são os destinos da tabela `descoberta`. Para um destino novo aparecer no mapa, inclua as coordenadas dele em `CIDADES`, no `radar.py`.
+
 ## Rodar e testar localmente
 
 ```bash

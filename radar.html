@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radar de passagens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: coluna única de leitura rápida. Curadoria no topo (poucas escolhas, com motivo), depois o painel de termômetros de todas as rotas. */
+:root {
+  --bg: #f3f5f8; --card: #ffffff; --ink: #141a26; --muted: #5d6779; --line: #dfe3ea;
+  --accent: #2c4bd8; --accent-soft: #e6ebff;
+  --good: #11865a; --mid: #c98a06; --bad: #c63b2f;
+  --good-soft: #e3f4ec; --mid-soft: #fbf1db; --bad-soft: #fbe6e3;
+  --mar: #e9eef6; --terra: #cfd7e4;
+  --f-display: "Space Grotesk", system-ui, sans-serif;
+  --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-num: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f131a; --card: #171c25; --ink: #e8ecf3; --muted: #97a1b3; --line: #29303c;
+  --accent: #7d95ff; --accent-soft: #1f2747;
+  --good: #3ccf8e; --mid: #f0b232; --bad: #f2695c;
+  --good-soft: #13291f; --mid-soft: #2e2512; --bad-soft: #321a18; --mar: #121821; --terra: #262f3d; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f131a; --card: #171c25; --ink: #e8ecf3; --muted: #97a1b3; --line: #29303c;
+  --accent: #7d95ff; --accent-soft: #1f2747;
+  --good: #3ccf8e; --mid: #f0b232; --bad: #f2695c;
+  --good-soft: #13291f; --mid-soft: #2e2512; --bad-soft: #321a18; --mar: #121821; --terra: #262f3d; color-scheme: dark; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
+#conteudo { display: grid; gap: 28px; }
+.voltar { color: var(--accent); font-size: 14px; width: fit-content; }
+main { max-width: 860px; margin: 0 auto; padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 28px; }
+h1, h2 { font-family: var(--f-display); margin: 0; text-wrap: balance; }
+h1 { font-size: 28px; letter-spacing: -0.01em; }
+h2 { font-size: 18px; }
+.num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+.eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.muted { color: var(--muted); }
+header { display: grid; gap: 6px; }
+.resumo { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; color: var(--muted); }
+.resumo b { color: var(--ink); }
+
+/* Curadoria */
+.picks { display: grid; gap: 12px; }
+.pick { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; }
+.pick-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.pick-rota { font-family: var(--f-display); font-size: 20px; font-weight: 700; }
+.pick-rota small { font-family: var(--f-num); font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 6px; }
+.pick-preco { font-family: var(--f-num); font-size: 22px; }
+.nota { margin: 0; max-width: 65ch; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; }
+.chip { border-radius: 999px; padding: 2px 10px; background: var(--bg); border: 1px solid var(--line); }
+.chip.comprar { background: var(--good-soft); border-color: transparent; color: var(--good); font-weight: 600; }
+.chip.olhar { background: var(--mid-soft); border-color: transparent; color: var(--mid); font-weight: 600; }
+.chip.esperar { background: var(--bad-soft); border-color: transparent; color: var(--bad); font-weight: 600; }
+.descartes { font-size: 14px; color: var(--muted); margin: 0; }
+
+/* Termômetros */
+.painel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.painel-cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.ordem { display: flex; gap: 4px; }
+.ordem button { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 3px 12px; cursor: pointer; }
+.ordem button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--card); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.linha { display: grid; grid-template-columns: 130px minmax(0, 1fr) 96px; gap: 14px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.linha:last-child { border-bottom: 0; }
+.linha .nome { font-weight: 600; }
+.linha .nome small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.linha .valor { text-align: right; }
+.linha .valor .num { font-size: 15px; }
+.linha .valor small { display: block; font-size: 12px; }
+.termo { position: relative; height: 34px; }
+.trilho { position: absolute; left: 0; right: 0; top: 12px; height: 10px; border-radius: 5px;
+  background: linear-gradient(90deg, var(--good), var(--mid) 50%, var(--bad)); opacity: .28; }
+.faixa { position: absolute; top: 10px; height: 14px; border-radius: 4px; border: 1.5px dashed var(--muted); }
+.hoje { position: absolute; top: 4px; width: 4px; height: 26px; margin-left: -2px; border-radius: 2px; background: var(--ink); }
+.hoje::after { content: ""; position: absolute; left: -4px; top: -4px; width: 12px; height: 12px; border-radius: 50%; background: var(--cor); border: 2px solid var(--card); }
+.escala { position: absolute; top: 24px; font-size: 11px; color: var(--muted); font-family: var(--f-num); }
+.escala.min { left: 0; } .escala.max { right: 0; }
+.legenda { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--muted); padding: 12px 16px; border-top: 1px solid var(--line); }
+.legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.lg-faixa { width: 18px; height: 10px; border: 1.5px dashed var(--muted); border-radius: 3px; }
+.lg-hoje { width: 10px; height: 10px; border-radius: 50%; background: var(--ink); }
+.spark { width: 100%; height: 28px; display: block; }
+@media (max-width: 600px) {
+  .linha { grid-template-columns: minmax(0,1fr) auto; grid-template-areas: "nome valor" "termo termo"; row-gap: 6px; }
+  .linha .nome { grid-area: nome; } .linha .valor { grid-area: valor; } .linha .termo { grid-area: termo; }
+}
+
+/* Mapa */
+.mapa { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.mapa svg { display: block; width: 100%; height: auto; background: var(--mar); }
+.mapa .terra { fill: var(--terra); stroke: none; }
+.mapa .pt { cursor: pointer; }
+.mapa .pt circle.halo { fill: transparent; }
+.mapa .pt circle.dot { stroke: var(--card); stroke-width: 1.5; }
+.mapa .pt.sel circle.dot { stroke: var(--ink); stroke-width: 2; }
+.mapa .pt:focus-visible { outline: none; } .mapa .pt:focus-visible circle.dot { stroke: var(--accent); stroke-width: 3; }
+.mapa .desc circle { fill: var(--card); stroke: var(--muted); stroke-width: 1.4; }
+.mapa text { font-family: var(--f-body); font-size: 12px; fill: var(--ink); paint-order: stroke; stroke: var(--card); stroke-width: 3px; stroke-linejoin: round; }
+.mapa text.sec { fill: var(--muted); font-size: 11px; }
+.mapa .origem { fill: var(--ink); }
+.mapa-detalhe { padding: 14px 16px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.mapa-leg { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); padding: 10px 16px; border-top: 1px solid var(--line); }
+.mapa-leg span { display: inline-flex; align-items: center; gap: 6px; }
+.mapa-leg i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+/* Filtro de período */
+.filtro { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; }
+.filtro-top { display: flex; justify-content: space-between; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
+.filtro-top strong { font-family: var(--f-display); font-size: 16px; }
+.datas { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.datas input { font: inherit; font-size: 13px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 3px 6px; }
+.atalhos { display: flex; gap: 6px; flex-wrap: wrap; }
+.atalhos button, .meses button { font: inherit; font-size: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 2px 10px; cursor: pointer; }
+.meses { display: flex; gap: 2px; }
+.meses button { border-radius: 6px; padding: 2px 0; min-width: 0; overflow: hidden; text-transform: capitalize; }
+.meses button[aria-pressed="true"], .atalhos button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--card); }
+.semanas { display: grid; grid-template-columns: repeat(26, minmax(0, 1fr)); gap: 2px; touch-action: none; cursor: ew-resize; user-select: none; -webkit-user-select: none; }
+.sem { height: 34px; border-radius: 4px; background: color-mix(in srgb, var(--good) var(--q), var(--bg)); border: 1px solid var(--line); opacity: .4; }
+.sem.on { opacity: 1; border-color: var(--ink); box-shadow: inset 0 -4px 0 var(--ink); }
+.filtro-dica { font-size: 12px; color: var(--muted); margin: 0; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="eyebrow" id="data">Radar</span>
+    <h1>O que vale a pena hoje</h1>
+    <div class="resumo" id="resumo"></div>
+    <a class="voltar" href="./">Perguntar ao assistente</a>
+  </header>
+
+  <p class="muted" id="estado">Carregando preços…</p>
+  <div id="conteudo" hidden>
+
+  <section class="filtro" aria-label="Período da viagem">
+    <div class="filtro-top">
+      <strong id="f-resumo"></strong>
+      <div class="datas"><label for="f-de">Ida de</label><input type="date" id="f-de"><label for="f-ate">até</label><input type="date" id="f-ate"></div>
+    </div>
+    <div class="atalhos" id="f-atalhos"></div>
+    <div class="meses" id="f-meses"></div>
+    <div class="semanas" id="f-semanas" role="group" aria-label="Semanas dos próximos 6 meses"></div>
+    <p class="filtro-dica">Arraste sobre as semanas, toque num mês ou digite as datas (a mesma data nos dois campos filtra um dia só). Quanto mais verde a semana, mais rotas abaixo do normal.</p>
+  </section>
+
+  <section aria-labelledby="t-map" class="mapa">
+    <div class="painel-cab"><h2 id="t-map">Mapa de oportunidades</h2><span class="muted" style="font-size:13px">Toque num destino</span></div>
+    <svg viewBox="0 0 840 612" role="group" aria-label="Mapa com os destinos saindo de São Paulo">
+      <path class="terra" d="M840,524.5L839.0,524.1L834.2,521.9L832.6,518.8L832.2,513.4L830.1,508.7L829.5,504.3L830.6,500.0L833.4,499.0L833.4,497.0L836.3,492.4L836.8,488.6L835.4,485.8L834.3,482.0L833.8,476.5L835.9,473.1L836.7,469.3L839.7,469.1L840,468.9L840,524.5ZM204.4,311.3L199.4,312.0L198.3,311.5L200.0,309.8L199.9,307.4L203.4,306.7L204.6,306.9ZM176.5,262.6L174.9,264.1L170.4,264.1L166.9,264.3L166.5,261.8L167.4,260.9L172.3,260.9L175.4,261.4ZM108.6,264.8L106.8,265.8L103.4,264.8L100.0,262.6L100.7,261.3L103.2,260.9L104.6,261.1L108.6,261.6L111.8,263.0L112.8,264.7ZM134.5,252.8L139.7,253.7L140.5,252.7L145.2,252.7L148.7,254.3L150.3,254.1L151.4,256.2L154.7,256.1L154.5,257.9L157.1,258.1L160.1,260.3L157.9,262.8L155.0,261.5L152.3,261.7L150.3,261.4L149.2,262.5L146.9,262.9L146.0,261.4L144.0,262.3L141.6,266.4L140.1,265.5L139.8,263.7L135.8,262.7L132.9,263.1L129.3,262.7L126.5,263.8L123.3,261.9L123.8,260.0L129.3,260.8L133.8,261.3L136.0,260.0L133.3,257.4L133.3,255.1L129.5,254.2L130.9,252.5ZM91.9,235.4L94.3,237.6L99.9,236.9L102.0,238.3L107.1,242.0L110.9,244.8L112.8,244.7L116.4,245.9L116.0,247.6L120.4,247.8L124.9,250.3L124.2,251.7L120.2,252.5L116.2,252.8L112.1,252.3L103.5,252.9L107.5,249.5L105.0,248.0L101.2,247.6L99.1,245.8L97.7,242.4L94.3,242.6L88.7,241.0L86.9,239.8L79.1,238.8L77.0,237.7L79.2,236.2L73.3,235.9L69.0,239.0L66.6,239.1L65.7,240.5L62.7,241.2L60.2,240.6L63.3,238.8L64.6,236.6L67.3,235.3L70.4,234.1L74.9,233.5L76.4,232.9L81.6,233.3L86.3,233.4ZM104.8,229.4L103.3,229.7L101.8,226.3L99.6,224.6L100.9,220.7L102.7,221.0L104.8,226.0ZM103.1,212.5L96.5,213.5L96.1,211.3L98.9,210.8L102.9,211.0ZM108.0,212.5L107.0,216.7L105.9,216.0L106.0,212.8L103.3,210.4L103.3,209.8ZM777.5,158.0L773.4,160.5L773.9,161.6L774.0,162.1L767.9,164.6L764.9,163.8L763.5,161.4L766.4,161.2L766.8,161.1L767.7,159.7L772.0,159.8ZM712.2,157.8L715.5,159.8L720.2,159.4L724.6,159.9L724.5,160.9L727.7,160.2L727.0,162.0L718.3,162.5L718.4,161.5L711.1,160.3ZM663.1,142.6L661.0,147.3L661.9,149.2L660.6,152.3L656.0,150.0L653.0,149.4L644.6,146.3L645.4,143.2L652.4,143.8L658.6,143.1ZM625.3,124.7L628.9,129.0L628.0,136.9L625.3,136.6L622.8,138.6L620.6,137.0L620.3,129.7L619.0,126.3L622.3,126.6ZM627.4,119.1L625.4,123.7L622.7,122.5L621.3,118.5L622.5,116.2L626.3,113.9ZM188.0,92.7L192.4,93.5L197.9,93.3L195.0,95.8L192.8,96.2L185.1,93.6L183.6,91.6L185.9,89.8ZM199.2,77.4L196.2,77.5L188.5,75.6L182.9,72.8L185.0,72.3L192.8,73.8L199.0,76.3ZM233.2,67.9L229.2,73.1L233.1,71.1L237.2,72.4L235.1,74.5L240.4,76.1L243.2,74.7L249.1,76.5L247.3,80.9L251.5,79.9L252.3,83.1L254.1,86.8L251.6,92.1L248.9,92.3L244.9,91.2L246.2,86.2L244.6,85.5L237.6,90.7L234.0,90.5L238.3,87.7L232.5,86.2L226.0,86.6L214.4,86.4L213.5,84.6L217.2,82.5L214.6,80.9L219.7,77.2L225.9,67.7L229.6,64.3L234.8,62.2L237.6,62.5L236.4,64.1ZM529.3,58.4L518.6,62.0L510.1,61.1L515.0,54.8L511.9,48.7L520.0,44.0L524.6,41.2L529.6,41.0L536.0,44.7L532.8,48.8L533.8,53.1ZM646.1,38.3L642.5,43.2L636.3,39.8L635.4,37.3L644.2,35.3ZM552.0,20.2L545.6,26.7L551.7,25.9L558.2,25.9L556.7,30.8L551.3,36.2L557.5,36.5L563.3,44.3L567.4,45.2L571.1,52.1L572.8,54.4L580.1,55.6L579.4,59.4L576.3,61.2L578.7,64.3L573.3,67.4L565.3,67.3L555.1,69.0L552.3,67.8L548.3,70.6L542.8,69.9L538.5,72.2L535.3,71.0L544.1,64.7L549.5,63.4L540.1,62.4L538.4,60.1L544.7,58.2L541.4,55.0L542.5,51.0L551.5,51.6L552.3,48.1L548.2,44.3L540.9,43.3L539.5,41.6L541.7,39.0L539.7,37.3L536.5,40.1L536.1,34.4L533.1,31.3L535.3,25.1L539.9,20.2L544.7,20.7ZM93.7,0L92.1,2.2L89.4,1.7L87.9,0L93.7,0ZM840,295.7L839.9,295.8L837.0,295.7L835.0,296.5L830.9,296.2L829.3,292.7L829.5,289.4L828.5,287.6L827.4,283.2L825.6,280.7L826.8,280.4L826.2,277.7L826.9,276.5L826.7,273.9L825.9,271.3L824.1,269.5L823.6,267.2L820.5,265L817.3,260.0L815.6,255.1L811.5,251.0L808.8,250.0L804.8,244.3L804.1,240.1L804.4,236.5L801.0,229.9L798.2,227.5L794.9,226.3L792.9,222.8L793.2,221.5L791.6,218.4L789.8,217.0L787.5,212.6L783.8,207.7L780.8,203.6L777.8,203.7L778.7,200.4L779.0,198.3L779.7,195.9L779.5,195.0L777.8,197.4L776.6,201.9L774.9,205.1L773.5,206.1L771.5,204.2L768.8,201.5L764.5,192.9L763.9,193.4L766.4,199.8L770.1,205.8L774.6,215.1L776.8,218.4L778.8,221.8L784.2,228.4L783.0,229.5L783.2,233.4L790.1,238.8L791.2,240.0L793.1,245.9L791.8,247.0L792.7,253.1L794.9,260.3L797.2,261.8L800.5,264.0L803.9,271.0L805.6,276.5L808.9,279.4L817.1,285.1L820.4,288.5L823.7,291.9L825.5,294.0L828.5,295.8L829.9,297.7L829.7,300.1L826.3,301.6L828.9,303.2L830.8,304.3L832,306.8L834.7,309.3L837.7,309.3L840,308.7L840,362.0L840,362.0L834.4,365.7L828.8,370.3L822.3,377.5L820.9,380.7L819.5,382.1L815.3,384.5L813.8,387.0L811.6,387.4L810.7,391.7L808.8,394.1L807.6,398.1L805.2,400.1L802.5,407.4L802.8,410.9L806.6,413.0L806.8,414.6L805.2,418.2L805.5,420.1L805.1,422.9L807.2,426.7L809.7,432.6L811.9,433.9L812.9,436.6L812.6,442.6L813.4,447.8L813.6,457.2L814.7,460.2L812.9,464.4L810.5,468.6L806.7,472.3L801.2,474.6L794.5,477.5L787.7,484.0L785.4,485.1L781.2,489.3L778.7,490.7L778.2,495.0L781.1,499.5L782.2,503.0L782.3,504.8L783.4,504.5L783.2,510.4L782.2,513.2L783.6,514.2L782.8,516.7L780.2,518.9L775.3,520.9L768.1,524.1L765.5,526.4L766.0,528.9L767.5,529.3L767.0,532.5L765.5,536.8L764.8,541.8L763.2,544.5L759.1,547.5L758.0,548.4L755.4,551.5L753.7,554.5L750.3,558.8L743.5,565.0L739.3,568.6L734.8,571.4L728.5,573.7L725.5,574.0L724.7,575.7L721.0,574.8L718.1,575.9L711.6,574.8L707.9,575.5L705.4,575.2L699.3,577.6L694.1,578.5L690.4,580.8L687.7,580.9L685.2,578.8L683.1,578.7L680.5,576.0L680.3,576.8L679.5,575.2L679.5,571.7L677.6,567.7L679.5,566.6L679.3,562.0L675.4,556.4L672.4,551.3L672.4,551.3L668.1,543.5L663.6,538.9L661.3,534.5L659.9,528.7L658.5,524.4L656.5,515.1L656.3,507.9L655.5,504.7L653.2,502.2L650.1,497.2L647.0,490.0L645.7,486.3L640.8,480.4L640.4,475.8L639.8,472.0L640.7,466.8L642.7,461.3L643.1,458.7L645.0,453.3L646.4,450.8L649.9,446.9L651.8,444.2L652.4,439.8L652.1,436.4L650.3,434.2L648.7,430.6L647.3,427.0L647.6,425.8L649.4,423.4L647.6,417.6L646.4,413.6L643.4,409.8L643.9,408.6L643.1,406.7L641.5,402.2L636.6,395.9L630.4,389.8L626.4,384.9L622.8,378.7L623.0,376.7L624.3,374.8L625.7,370.4L626.9,365.9L625.8,365.0L627.9,358.3L628.8,353.6L626.4,349.6L623.7,348.6L622.5,345.9L620.9,345.0L621.0,343.4L614.8,345.5L612.5,345.2L610.2,346.6L605.4,346.4L602.2,342.7L600.2,338.3L596.0,334.4L591.4,334.5L586.1,334.4L581.2,335.1L576.4,336.4L566.9,339.9L563.6,342.0L558.2,343.7L552.9,342.0L550.1,342.1L545.9,340.9L542.1,341.0L535.0,342.0L530.8,343.8L524.9,346.0L523.7,345.8L522.1,345.9L516.0,343.0L510.5,338.4L505.4,335.2L501.4,331.3L499.7,330.8L495.4,328.4L492.3,325.2L491.3,323.0L490.5,318.6L487.9,315.0L485.6,312.7L484.0,311.9L482.5,310.7L481.8,308.1L481.0,306.7L479.2,305.8L476.0,303.2L473.5,302.8L472.1,301.2L472.1,300.2L470.3,299.0L469.9,297.7L468.9,293.1L469.7,290.4L467.2,285.8L464.3,283.6L466.9,282.5L469.8,278.3L471.2,275.2L470.7,272.0L472.4,269.0L473.1,263.3L472.5,257.4L471.7,254.4L472.3,251.4L470.8,248.6L467.6,246.0L467.9,243.5L468.2,240.7L470.5,239.1L472.4,235.9L472.0,233.9L474.1,229.7L477.5,225.8L479.5,224.9L481.1,221.4L481.2,218.2L483.4,214.5L487.3,212.3L491.2,206.2L494.3,203.8L499.9,203.1L504.6,199.0L507.6,197.4L512.6,192.4L511.1,184.9L513.4,179.8L514.2,176.6L518.1,172.6L524.1,169.8L528.5,167.3L532.5,161.1L534.4,157.4L538.8,157.5L542.4,160.0L548.2,159.6L554.4,160.9L557.0,161.0L562.8,157.7L569.2,156.7L573.0,154.2L578.8,152.4L589.0,151.3L598.9,150.8L601.9,151.7L607.6,149.3L614.0,149.3L616.4,150.7L620.5,150.3L627.1,147.9L631.3,148.6L631.1,151.7L636.2,149.5L636.6,150.6L633.6,153.5L633.6,156.3L635.6,157.8L634.9,163.0L630.9,166.0L632.0,169.3L635.1,169.4L636.6,172.2L638.9,173.2L646.0,175.2L648.5,174.7L653.5,175.7L661.5,178.4L664.3,183.7L669.7,184.9L678.1,187.4L684.5,190.4L687.5,188.8L690.3,186.1L688.9,181.5L690.8,178.6L695.1,175.8L699.3,174.9L707.4,176.2L709.4,178.9L711.7,178.9L713.6,179.9L719.5,180.6L721.0,182.6L729.0,182.5L734.8,184.1L740.7,185.8L743.5,186.8L748.1,184.9L750.6,183.2L755.9,182.7L760.1,183.4L761.8,186.4L763.2,184.4L768.0,185.9L772.6,186.2L775.6,184.7L777.3,182.7L776.9,182.4L778.5,179.6L779.7,175.0L780.6,173.5L780.8,173.5L782.9,168.6L785.9,164.3L786.0,164.1L785.4,159.5L786.9,157.1L784.7,154.3L787.0,152.1L783.3,152.6L778.3,151.2L774.2,154.7L765.1,155.4L760.2,152.1L753.7,151.9L752.3,154.4L748.2,155.1L742.4,151.9L735.9,152.0L732.3,146.1L727.9,142.8L730.8,138.1L727.0,135.2L733.7,129.5L742.9,129.2L745.4,124.7L756.9,125.5L764.1,121.6L771.1,119.9L781.0,119.8L791.5,124.0L800.1,126.3L807.1,125.4L812.2,125.9L819.3,122.8L820.2,120.2L818.7,116.1L815.3,113.9L811.9,113.2L809.7,111.4L802.1,106.3L795.2,104.1L790.1,100.5L794.4,99.6L799.4,94.6L796.0,92.2L804.9,89.7L804.7,88.4L799.3,89.4L794.5,89.9L790.5,91.8L784.9,92.1L779.8,94.4L780.1,98.1L783.1,99.5L789.2,99.2L788,101.3L781.4,102.4L773.3,105.8L770.0,104.6L771.3,101.8L764.7,100.0L765.8,98.9L771.5,96.9L769.8,95.5L760.5,94.0L760.0,91.8L754.5,92.5L752.3,95.8L747.6,100.2L747.8,101.8L744.8,103.1L743.0,102.5L741.3,109.8L738.2,112.2L736.1,116.5L738.0,120.0L738.7,122.3L743.9,124.2L742.8,125.7L735.7,126.0L733.2,127.9L728.1,131.1L726.3,128.3L726.3,127.1L722.7,126.9L719.5,126.3L712.3,127.9L716.4,131.3L713.4,132.2L710.1,132.2L706.9,129.1L705.8,130.5L707.1,134.0L710.1,136.9L707.8,138.2L711.2,140.9L714.1,142.7L714.2,146.1L708.7,144.5L710.5,147.5L706.7,148.2L708.9,153.5L704.9,153.5L700.0,150.9L697.8,146.1L696.7,142.1L694.4,139.4L691.3,136.0L690.9,134.3L689.9,133.8L689.8,132.5L686.4,130.5L685.9,127.6L686.4,123.5L687.2,121.7L686.2,120.7L685.0,120.3L683.3,118.3L680.7,117.1L675.1,114.9L671.6,112.7L666.1,111.0L661.1,106.5L662.3,106.1L659.5,103.6L659.4,101.5L655.5,100.6L653.7,103.2L651.9,101.2L652.1,99.1L652.3,99L653.6,98.5L648.9,97.6L644.0,99.7L644.3,102.7L643.6,104.4L645.5,107.5L651.2,110.5L654.2,115.4L660.9,120.3L665.5,120.2L667.0,121.6L665.3,122.8L670.7,124.9L675.1,126.7L680.3,129.9L680.9,131.0L679.8,133.1L676.4,130.3L671.2,129.3L668.7,133.2L673.0,135.4L672.3,138.6L669.8,138.9L666.6,144.1L664.1,144.5L664.1,142.7L665.4,139.5L666.6,138.2L664.3,134.7L662.5,131.7L660.0,131.0L658.2,128.4L654.4,127.3L651.8,124.9L647.3,124.5L642.6,121.8L637.1,117.9L633.1,114.4L631.2,108.5L628.2,107.8L623.3,105.8L620.6,106.6L617.1,109.4L614.6,109.8L609.2,113.2L597.3,111.6L588.6,113.6L587.9,117.2L588.2,120.7L582.6,124.6L574.9,125.9L574.3,127.9L570.6,131.3L568.3,136.1L570.7,139.6L567.2,142.2L565.9,146.1L561.4,147.3L557.1,152.0L549.5,152.0L543.8,151.9L540.0,154.1L537.7,156.3L534.8,155.8L532.6,153.8L530.9,150.3L525.3,149.4L522.9,151.0L519.7,150.1L516.6,150.8L517.5,146.1L517.0,142.4L514.3,141.8L512.8,139.6L513.3,135.7L515.7,133.5L516.1,131.0L517.4,127.4L517.3,124.9L516.1,122.7L515.8,120.7L516.1,116.4L513.6,113.8L522.1,109.5L529.5,110.6L537.5,110.6L543.9,111.6L548.9,111.3L558.6,111.5L561.7,107.9L562.8,95.9L556.6,89.6L552.2,86.6L543.1,84.3L542.4,79.9L550.2,78.6L560.3,80.1L558.4,73.3L564.1,75.9L578.0,71.2L579.8,66.3L585.1,65.1L589.9,63.9L593.0,62.3L598.2,53.4L606.5,50.9L611.4,51.1L612.6,49.8L617.6,49.5L618.7,50.8L622.8,47.9L621.4,45.6L621.2,42.2L618.7,38.9L618.5,32.8L619.5,31.1L621.3,29.3L626.5,29.0L628.7,27.3L633.5,25.6L633.3,28.7L631.5,30.7L632.2,32.3L635.5,33.2L634.0,35.5L632.2,34.9L627.9,39.2L629.5,42.1L629.6,44.4L635.7,45.8L635.6,47.9L641.7,46.8L645.1,45.2L651.9,47.5L654.7,49.5L658.8,47.7L668.2,44.9L675.7,42.9L681.7,43.9L682.2,45.4L688.0,45.4L689.3,42.8L697.6,40.9L696.3,35.8L696.5,31.3L699.5,27.5L705.1,25.5L709.9,30.0L714.7,29.8L715.9,25.2L716.6,21.7L714.4,22.5L710.6,20.3L710.0,16.9L717.6,15.2L725.2,14.3L731.7,15.3L737.9,15.1L744.7,11.8L738.4,9.0L727.5,9.5L717.0,11.7L707.2,12.9L703.7,9.7L697.9,7.7L699.3,1.8L698.3,0L840,0ZM674.8,0L672.7,4.0L677.0,8.2L682.7,11.5L677.2,18.3L671.0,19.7L668.7,29.8L665.3,35.4L658.0,34.8L654.6,39.6L647.7,39.8L645.7,34.2L640.7,27.3L636.2,18.9L632.1,15.2L620.3,22.1L612.3,23.5L604.0,20.5L601.9,14.0L599.9,0.2L600.2,0L674.8,0ZM10.9,0L4.6,6.6L2.2,11.3L1.9,18.3L10.7,19.3L13.4,24.9L16.2,29.5L24.6,28.3L35.8,30.9L41.8,33.2L46.1,36.0L53.6,37.7L59.9,40.2L69.8,40.5L76.4,41.1L75.4,46.3L77.2,52.3L81.6,59.0L90.5,64.7L95.2,62.8L98.4,56.6L95.3,47.1L91.0,44.0L100.6,41.2L107.4,37.0L110.7,32.8L110.3,28.8L106.2,23.7L98.9,19.2L106.0,12.9L103.4,7.5L101.8,0L133.9,0L133.9,0L139.9,2.9L141.8,5.2L152.5,5.6L152.3,10.7L154.3,18.3L159.8,19.2L164.1,22.7L172.8,19.4L178.5,12.8L182.5,10.0L187.2,15.3L195.0,23.0L201.6,30.2L199.2,34.0L207.2,37.3L212.6,40.8L222.1,42.3L226.0,44.2L228.4,49.3L233.0,50.1L235.5,52.4L235.9,59.1L231.5,61.4L227.2,63.5L217.3,65.6L209.8,70.5L199.7,71.5L186.8,70.3L177.8,70.2L171.6,70.6L166.6,74.9L158.9,77.6L150.3,85.5L143.4,91.1L148.5,90.1L158.1,82.2L170.7,77.2L179.7,76.6L185.0,79.5L179.3,83.6L181.2,90.0L183.2,94.6L191.0,97.6L200.9,96.7L206.9,90.0L207.3,94.3L211.2,96.5L203.8,100.4L190.5,104.0L184.5,106.4L177.8,110.7L173.3,110.3L173.0,105.2L183.5,100.2L173.8,100.4L167.2,101.2L168.2,103.1L161.8,106.0L155.6,108.1L149.3,109.9L145.9,113.8L145.1,114.8L145.0,118.0L147.0,121.2L149.5,121.3L148.9,119.1L150.7,120.5L150.2,122.2L146.2,123.2L143.3,123.0L138.8,124.1L136.2,124.4L132.7,124.7L127.7,126.4L136.6,125.3L138.3,126.4L129.9,128.2L126.1,128.2L126.3,127.5L124.5,129.2L126.2,129.4L124.9,133.7L120.6,138.4L120.1,136.8L118.8,136.5L116.8,135.0L118.1,138.2L119.5,139.3L119.7,141.6L117.7,143.9L114.4,148.7L113.8,148.5L115.7,144.4L112.6,142.1L111.9,137.1L110.7,139.7L112.0,143.5L108.2,142.6L112.2,144.5L112.5,150.2L114.2,150.6L114.8,152.7L115.6,158.7L111.8,163.2L105.6,164.9L101.7,168.4L98.7,168.8L95.6,171.0L94.8,173.1L88.2,176.9L84.8,179.8L82.0,183.4L81.0,187.6L82.1,191.8L84.1,196.9L86.8,201.2L86.8,203.8L89.7,210.7L89.5,214.8L89.2,217.1L87.7,220.8L85.9,221.5L83.0,220.8L82.0,218.2L79.7,216.8L76.6,211.6L73.8,207.0L72.9,204.7L74.1,200.7L72.4,197.4L67.7,192.4L65.4,191.5L59.3,194.2L58.3,193.9L55.4,191.1L51.6,189.6L44.8,190.4L39.5,189.7L34.9,190.1L32.4,190.9L33.5,192.6L33.4,195.1L34.7,196.3L33.5,197.0L31.3,196.2L29.1,197.3L24.7,197.1L20.2,193.9L15.0,194.7L10.7,193.3L6.9,193.7L1.9,195.1L0,196.6L0,0ZM0,260.4L1.0,260.6L3.4,263.1L8.7,261.5L13.3,260.8L17.8,259.8L21.6,258.7L25.4,256.3L26.8,252.8L27.3,247.8L28.3,246.0L32.4,244.4L38.7,243.0L44.0,243.2L47.7,242.7L49.1,244.0L48.9,246.9L45.7,250.5L44.3,254.1L45.4,255.2L44.5,257.8L43.0,262.4L41.5,260.9L40.2,261.0L40.2,261.9L41.4,261.9L41.3,263.5L40.3,266.1L40.8,267.1L40.2,269.2L40.6,269.8L39.9,272.8L38.7,274.4L37.6,274.6L36.4,276.7L38.4,277.8L38.9,276.9L40.7,277.6L41.3,277.9L42.6,276.8L44.3,276.7L44.9,277.2L45.8,276.9L48.6,277.5L51.3,277.3L53.3,276.6L54.0,276.0L55.9,276.3L57.3,276.7L58.9,276.5L60.1,276.0L62.8,276.9L63.8,277.0L65.6,278.1L67.4,279.5L69.5,280.4L71.1,282.0L70.6,282.6L70.3,283.9L70.9,286.1L69.5,288.2L68.9,290.6L68.7,293.2L69.0,294.8L69.2,297.5L68.2,298.1L67.7,300.6L68.1,302.2L66.9,303.8L67.1,305.4L68.1,306.4L69.6,309.6L71.9,312.0L74.7,314.6L76.9,316.8L76.7,318.0L79.1,318.3L79.7,317.8L81.4,319.3L84.3,318.9L86.9,317.3L90.5,316.1L92.6,314.3L95.9,314.7L95.6,315.3L99.0,315.5L101.7,316.5L103.6,318.3L105.9,320.0L109.0,320.2L113.5,316.0L116.0,315.3L116.0,313.4L117.1,308.3L120.6,305.5L124.3,305.4L124.8,304.1L129.5,304.6L134.2,301.6L136.6,300.3L139.5,297.4L141.6,297.7L143.2,299.3L142.0,301.3L141.8,302.8L138.3,303.5L140.3,306.2L140.2,309.3L137.6,312.8L139.8,317.6L142.4,317.2L143.8,312.8L141.9,310.7L141.6,306.2L149.1,303.7L148.2,300.9L150.3,299.0L152.5,303.2L156.7,303.3L160.6,306.7L160.8,308.7L166.2,308.7L172.6,308.1L176.1,310.8L180.7,311.5L184.0,309.7L184.1,308.1L191.5,307.8L198.7,307.7L193.6,309.5L195.7,312.3L200.5,312.8L205.0,315.7L206.0,320.5L209.1,320.4L211.4,321.8L215.4,324.0L219.1,327.9L219.3,331.0L221.5,331.1L224.8,334.1L227.1,336.2L234.3,337.4L234.9,336.3L239.8,335.8L246.2,337.5L248.3,338.1L252.7,339.5L259.1,344.6L260.0,347.1L262.1,346.8L263.6,350.1L266.9,360.6L270.2,361.6L270.3,365.7L265.8,370.7L267.7,372.5L278.3,373.4L278.5,379.4L283.1,375.5L290.6,377.6L300.6,381.3L303.5,384.8L302.5,388.1L309.5,386.3L321.2,389.5L330.1,389.2L339.0,394.2L346.7,400.9L351.3,402.7L356.4,402.9L358.6,404.8L360.6,412.4L361.6,416.1L359.2,426.0L356.2,429.9L347.7,438.2L343.9,445.0L339.4,450.2L338.0,450.3L336.3,454.8L336.7,466.0L335.0,475.2L334.4,479.2L332.5,481.6L331.4,489.6L325.3,497.4L324.3,503.6L319.5,506.2L318.1,509.8L311.5,509.8L302.1,512.1L297.9,514.8L291.2,516.5L284.1,521.3L279.0,527.3L278.1,531.7L279.1,535.1L278.0,541.1L276.7,544.0L272.5,547.3L265.8,557.9L260.5,562.7L256.5,565.5L253.7,571.2L249.8,574.6L247.2,578.4L240.4,581.7L236.0,580.5L232.7,581.2L227.2,578.6L223.1,578.8L219.4,575.5L219.0,578.6L226.7,583.7L225.8,587.9L229.6,590.5L229.3,593.4L223.5,601.1L214.6,604.3L202.6,605.6L196.0,605.0L197.3,608.5L196.3,612L127.9,612L127.9,612L127.9,611.7L130.7,607.5L129.0,601.7L128.5,594.9L131.0,594.7L134.7,585.1L138.8,575.5L141.4,566.5L140.0,557.5L141.8,552.6L141.1,545.2L144.6,537.8L145.7,526.2L147.6,513.8L149.5,500.4L149.0,490.5L147.8,482.1L141.7,478.6L141.2,476.2L129.3,470.2L118.6,463.6L113.9,459.9L111.5,454.9L112.5,453.2L107.4,445.3L101.4,434.3L95.8,422.3L93.3,419.6L91.4,415.2L86.8,411.2L82.5,408.8L84.4,406.1L81.5,400.4L83.4,396.2L88.2,392.4L91.4,387.9L90.1,385.3L87.8,388.1L84.2,385.5L85.4,383.8L84.4,378.3L86.5,377.4L87.6,373.7L89.9,369.8L89.4,367.4L92.8,366.1L96.9,363.7L96.1,361.9L98.3,361.4L98.0,358.4L99.4,356.2L102.4,355.8L104.9,352.1L107.2,348.9L105.0,347.5L106.1,344.0L104.8,338.5L106.1,336.9L105.1,331.9L102.7,328.7L100.7,326.9L99.4,323.7L100.9,322.1L99.4,321.7L98.3,319.7L95.3,318.0L92.6,318.4L91.4,320.5L89.0,322.0L87.7,322.2L87.1,323.5L90.0,326.7L88.3,327.5L87.5,328.4L84.7,328.7L83.6,325.1L82.9,326.1L80.9,325.8L79.7,323.3L77.2,322.9L75.6,322.2L73.1,322.3L72.9,323.6L72.2,322.7L69.0,321.3L67.7,320.1L68.4,319.0L68.2,317.7L66.5,316.3L64.2,315.1L62.1,314.3L61.7,312.5L60.1,311.5L60.5,313.2L59.3,314.7L58.0,313.0L56.0,312.4L55.2,311.2L55.3,309.4L56.0,307.5L54.3,306.6L55.7,305.5L53.7,303.6L50.9,301.2L49.5,299.1L47.0,297.3L44.0,294.5L44.6,293.6L45.6,294.5L46.1,294.1L45.1,292.2L43.2,291.7L42.6,293.1L39.1,293.0L36.9,292.4L34.5,291.3L31.1,290.9L29.4,289.6L26.4,288.5L22.6,288.4L19.9,287.2L16.6,284.8L9.9,278.3L6.7,276.4L1.9,274.8L0,275.0L0,260.4ZM172.8,0L173.0,0.4L170.2,0L172.8,0ZM315.2,0L315.5,0.6L312.8,5.6L309.7,11.4L301.3,11.8L292.4,6.9L280.4,6.9L274.6,3.6L272.2,0L315.2,0Z"/>
+      <g id="descob"></g><g id="pontos"></g>
+    </svg>
+    <div class="mapa-detalhe" id="detalhe"></div>
+    <div class="mapa-leg">
+      <span><i style="background:var(--good)"></i>comprar</span><span><i style="background:var(--mid)"></i>vale olhar</span><span><i style="background:var(--bad)"></i>esperar</span>
+      <span><i style="border:1.4px solid var(--muted)"></i>descoberta: destinos baratos fora das suas rotas, sem análise</span>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-cur" style="display:grid; gap:12px">
+    <div style="display:grid; gap:2px">
+      <h2 id="t-cur">Curadoria do dia</h2>
+      <span class="muted" style="font-size:14px">Só entra aqui o que está abaixo da faixa típica da própria rota, no período escolhido. No máximo três.</span>
+    </div>
+    <div class="picks" id="picks"></div>
+    <p class="descartes" id="descartes"></p>
+  </section>
+
+  <section aria-labelledby="t-pan" class="painel">
+    <div class="painel-cab">
+      <h2 id="t-pan">Termômetro por trecho</h2>
+      <div class="ordem" role="group" aria-label="Ordenar">
+        <button id="ord-op" aria-pressed="true">Melhor momento</button>
+        <button id="ord-pr" aria-pressed="false">Menor preço</button>
+      </div>
+    </div>
+    <div id="linhas"></div>
+    <div class="legenda">
+      <span><i class="lg-hoje"></i>preço de hoje</span>
+      <span><i class="lg-faixa"></i>faixa típica (do Google, ou do nosso histórico quando ainda não há busca confirmada)</span>
+      <span>barra: do menor preço ao teto dos últimos 90 dias</span>
+    </div>
+  </section>
+  </div>
+</main>
+
+<script>
+const brl = v => "R$ " + Math.round(v).toLocaleString("pt-BR");
+const mil = v => (v / 1000).toFixed(1).replace(".", ",") + "k";
+const dt = iso => { const [, m, d] = iso.split("-"); return `${d}/${m}`; };
+const DIA = 864e5;
+const dias = r => Math.round((Date.parse(r.volta) - Date.parse(r.ida)) / DIA);
+const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const mediana = r => (r.faixa[0] + r.faixa[1]) / 2;
+const desconto = r => 1 - r.hoje / mediana(r);            // positivo = abaixo do normal
+const pos = (r, v) => Math.max(0, Math.min(100, (v - r.min) / ((r.max - r.min) || 1) * 100));
+
+let BASE = [], DESCOBERTA = [], ROTAS = [], HOJE = 0, NDIAS = 182, MESES = [], ATALHOS = [];
+let semDados = 0, ordemAtual = "op", de = 0, ate = 181, selecionada = null;
+const iso = i => new Date(HOJE + i * DIA).toISOString().slice(0, 10);
+const idx = s => Math.round((Date.parse(s) - HOJE) / DIA);
+
+function veredito(r) {
+  if (r.hoje < r.faixa[0]) return {cls:"comprar", txt:"Comprar", cor:"var(--good)"};
+  if (r.hoje <= mediana(r)) return {cls:"olhar", txt:"Vale olhar", cor:"var(--mid)"};
+  return {cls:"esperar", txt:"Esperar", cor:"var(--bad)"};
+}
+const fonteFaixa = r => r.faixa_fonte === "google" ? "faixa típica do Google" : "faixa típica do nosso histórico";
+const voo = r => [r.cia, r.esc ? `${r.esc} escala${r.esc > 1 ? "s" : ""}` : "direto"].filter(Boolean).map(esc).join(" · ");
+
+function nota(r) {
+  const pct = Math.round(desconto(r) * 100);
+  const perto = r.hoje <= r.min * 1.05 ? " É praticamente o menor preço que vimos em 90 dias." : "";
+  return `${pct}% abaixo do normal: a ${fonteFaixa(r)} começa em ${brl(r.faixa[0])}.${perto}`;
+}
+
+function termometro(r) {
+  const v = veredito(r);
+  return `<div class="termo" role="img" aria-label="${esc(r.nome)}: ${brl(r.hoje)}, faixa típica ${brl(r.faixa[0])} a ${brl(r.faixa[1])}">
+    <div class="trilho"></div>
+    <div class="faixa" style="left:${pos(r,r.faixa[0])}%;width:${pos(r,r.faixa[1])-pos(r,r.faixa[0])}%"></div>
+    <div class="hoje" style="left:${pos(r,r.hoje)}%;--cor:${v.cor}"></div>
+    <span class="escala min">${mil(r.min)}</span>
+    <span class="escala max">${mil(r.max)}</span>
+  </div>`;
+}
+
+function render(ordem) {
+  ordemAtual = ordem;
+  const bons = ROTAS.filter(r => veredito(r).cls === "comprar").sort((a,b) => desconto(b) - desconto(a));
+  const curados = bons.slice(0, 3);
+  document.getElementById("picks").innerHTML = curados.map(r => `
+    <article class="pick">
+      <div class="pick-top">
+        <div class="pick-rota">${esc(r.nome)}<small>${esc(r.cod)}</small></div>
+        <div class="pick-preco num">${brl(r.hoje)}</div>
+      </div>
+      ${termometro(r)}
+      <p class="nota">${nota(r)}</p>
+      <div class="chips">
+        <span class="chip comprar">Comprar</span>
+        <span class="chip">${dt(r.ida)} → ${dt(r.volta)} · ${dias(r)} dias</span>
+        <span class="chip">${voo(r)}</span>
+      </div>
+    </article>`).join("") || `<p class="descartes">Nenhuma rota está abaixo do normal nesse período. Tente ampliar as datas.</p>`;
+  const resto = ROTAS.length - curados.length;
+  document.getElementById("descartes").textContent = curados.length
+    ? `${resto} rotas ficaram de fora. Elas continuam no termômetro abaixo.` + (semDados ? ` Outras ${semDados} não têm preço nesse período.` : "")
+    : "";
+
+  const lista = [...ROTAS].sort(ordem === "preco" ? (a,b) => a.hoje - b.hoje : (a,b) => desconto(b) - desconto(a));
+  document.getElementById("linhas").innerHTML = lista.map(r => {
+    const d = Math.round(desconto(r) * 100), v = veredito(r);
+    return `<div class="linha">
+      <div class="nome">${esc(r.nome)}<small>${dt(r.ida)} · ${dias(r)} dias</small></div>
+      ${termometro(r)}
+      <div class="valor"><span class="num">${brl(r.hoje)}</span>
+        <small style="color:${v.cor}">${d >= 0 ? d + "% abaixo" : -d + "% acima"}</small></div>
+    </div>`;
+  }).join("") || `<p class="descartes" style="padding:14px 16px">Sem preços nesse período.</p>`;
+
+  document.getElementById("resumo").innerHTML =
+    `<span><b>${BASE.length}</b> rotas monitoradas</span><span><b>${bons.length}</b> abaixo da faixa típica</span><span>idas de ${dt(iso(de))} a ${dt(iso(ate))}</span>`;
+}
+
+// ---- Mapa (projeção equirretangular: 6 px por grau, canto em 95°O 62°N) ----
+const GRU = {lon:-46.5, lat:-23.4};
+const xy = p => [(p.lon + 95) * 6, (62 - p.lat) * 6];
+const noMapa = p => p.lon != null && p.lon > -95 && p.lon < 45 && p.lat < 62 && p.lat > -40;
+function renderMapa() {
+  const [gx,gy] = xy(GRU);
+  const origem = `<circle class="origem" cx="${gx}" cy="${gy}" r="5"/><text x="${gx-10}" y="${gy+16}" text-anchor="end" font-weight="600">São Paulo</text>`;
+  document.getElementById("descob").innerHTML = DESCOBERTA.filter(noMapa).map(d => { const [x,y] = xy(d);
+    return `<g class="desc"><circle cx="${x}" cy="${y}" r="4"/><text class="sec" x="${x+8}" y="${y+4}">${esc(d.nome)} ${mil(d.preco)}</text></g>`; }).join("");
+  if (!ROTAS.length) { document.getElementById("pontos").innerHTML = origem; document.getElementById("detalhe").innerHTML = `<span class="muted">Sem preços nesse período.</span>`; return; }
+  const curados = new Set(ROTAS.filter(r => veredito(r).cls === "comprar").sort((a,b) => desconto(b) - desconto(a)).slice(0, 3).map(r => r.nome));
+  if (!ROTAS.find(r => r.nome === selecionada)) selecionada = [...ROTAS].sort((a,b) => desconto(b) - desconto(a))[0].nome;
+  document.getElementById("pontos").innerHTML = ROTAS.filter(noMapa).map(r => { const [x,y] = xy(r), sel = r.nome === selecionada;
+    const rot = curados.has(r.nome) || sel;
+    const esq = r.lon < -5 && r.lat > 30;   // Lisboa: rótulo à esquerda para não cobrir a Europa
+    return `<g class="pt${sel ? " sel" : ""}" tabindex="0" role="button" aria-label="${esc(r.nome)}, ${brl(r.hoje)}, ${veredito(r).txt}" data-nome="${esc(r.nome)}">
+      <circle class="halo" cx="${x}" cy="${y}" r="16"/>
+      <circle class="dot" cx="${x}" cy="${y}" r="${curados.has(r.nome) ? 8 : 6}" fill="${veredito(r).cor}"/>
+      ${rot ? `<text x="${esq ? x-12 : x+12}" y="${y+4}" ${esq ? 'text-anchor="end"' : ""} font-weight="600">${esc(r.nome)} ${brl(r.hoje)}</text>` : ""}</g>`; }).join("") + origem;
+  const r = ROTAS.find(r => r.nome === selecionada), v = veredito(r), d = Math.round(desconto(r) * 100);
+  document.getElementById("detalhe").innerHTML = `
+    <div class="pick-top"><div class="pick-rota">${esc(r.nome)}<small>${esc(r.cod)}</small></div><div class="pick-preco num">${brl(r.hoje)}</div></div>
+    ${termometro(r)}
+    <div class="chips"><span class="chip ${v.cls}">${v.txt}</span><span class="chip">${d >= 0 ? d + "% abaixo do normal" : -d + "% acima do normal"}</span>
+      <span class="chip">${dt(r.ida)} → ${dt(r.volta)} · ${dias(r)} dias</span><span class="chip">${voo(r)}</span></div>`;
+}
+const pontos = document.getElementById("pontos");
+const escolher = e => { const g = e.target.closest(".pt"); if (g) { selecionada = g.dataset.nome; renderMapa(); } };
+pontos.addEventListener("click", escolher);
+pontos.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); escolher(e); } });
+
+// ---- Filtro de período ----
+const NOMES_MES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const fDe = document.getElementById("f-de"), fAte = document.getElementById("f-ate"), fSem = document.getElementById("f-semanas");
+
+function aplicar() {
+  ROTAS = BASE.map(r => { let b = -1;
+    for (let i = de; i <= ate; i++) if (r.dias[i] && (b < 0 || r.dias[i][0] < r.dias[b][0])) b = i;
+    if (b < 0) return null;
+    const [preco, volta, cia, escalas] = r.dias[b];
+    return {...r, hoje: preco, ida: iso(b), volta, cia, esc: escalas}; }).filter(Boolean);
+  semDados = BASE.length - ROTAS.length;
+  fDe.value = iso(de); fAte.value = iso(ate);
+  const n = ate - de + 1;
+  document.getElementById("f-resumo").textContent = n === 1 ? `Ida em ${dt(iso(de))}` : `Idas de ${dt(iso(de))} a ${dt(iso(ate))} · ${n} dias`;
+  [...fSem.children].forEach((c, w) => c.classList.toggle("on", w * 7 <= ate && w * 7 + 6 >= de));
+  document.querySelectorAll("#f-meses button").forEach((b, i) => b.setAttribute("aria-pressed", MESES[i].ini === de && MESES[i].fim === ate));
+  document.querySelectorAll("#f-atalhos button").forEach((b, i) => b.setAttribute("aria-pressed", ATALHOS[i][1] === de && ATALHOS[i][2] === ate));
+  render(ordemAtual); renderMapa();
+}
+const definir = (a, b) => { de = Math.max(0, Math.min(a, b)); ate = Math.min(NDIAS - 1, Math.max(a, b)); aplicar(); };
+document.getElementById("f-atalhos").addEventListener("click", e => { const b = e.target.closest("button"); if (b) definir(ATALHOS[b.dataset.i][1], ATALHOS[b.dataset.i][2]); });
+document.getElementById("f-meses").addEventListener("click", e => { const b = e.target.closest("button"); if (b) definir(MESES[b.dataset.i].ini, MESES[b.dataset.i].fim); });
+const lerData = () => { if (fDe.value && fAte.value) definir(idx(fDe.value), idx(fAte.value)); };
+fDe.addEventListener("change", lerData); fAte.addEventListener("change", lerData);
+let ancora = null;
+const semanaEm = e => { const r = fSem.getBoundingClientRect(); return Math.max(0, Math.min(25, Math.floor((e.clientX - r.left) / r.width * 26))); };
+fSem.addEventListener("pointerdown", e => { ancora = semanaEm(e); fSem.setPointerCapture(e.pointerId); definir(ancora * 7, ancora * 7 + 6); });
+fSem.addEventListener("pointermove", e => { if (ancora == null) return; const w = semanaEm(e); definir(Math.min(ancora, w) * 7, Math.max(ancora, w) * 7 + 6); });
+for (const ev of ["pointerup", "pointercancel"]) fSem.addEventListener(ev, () => { ancora = null; });
+for (const [id, o] of [["ord-op","op"],["ord-pr","preco"]]) {
+  document.getElementById(id).addEventListener("click", () => {
+    document.querySelectorAll(".ordem button").forEach(b => b.setAttribute("aria-pressed", b.id === id));
+    render(o);
+  });
+}
+
+function iniciar(d) {
+  HOJE = Date.parse(d.hoje); NDIAS = d.dias; DESCOBERTA = d.descoberta;
+  BASE = d.rotas.map(r => ({...r, dias: Array.from({length: NDIAS}, (_, i) => r.serie[iso(i)] || null)}));
+  de = 0; ate = NDIAS - 1;
+  document.getElementById("data").textContent = "Radar · " + new Date(HOJE).toLocaleDateString("pt-BR", {weekday:"long", day:"numeric", month:"long", timeZone:"UTC"});
+  MESES = []; for (let i = 0; i < NDIAS; i++) { const m = new Date(HOJE + i * DIA).getUTCMonth(); const u = MESES[MESES.length - 1];
+    if (u && u.m === m) u.fim = i; else MESES.push({m, ini: i, fim: i}); }
+  ATALHOS = [["Próximos 6 meses", 0, NDIAS - 1], ["Próximos 30 dias", 0, 29], ["Próximos 90 dias", 0, 89]];
+  fDe.min = fAte.min = iso(0); fDe.max = fAte.max = iso(NDIAS - 1);
+  document.getElementById("f-atalhos").innerHTML = ATALHOS.map((a, i) => `<button data-i="${i}">${a[0]}</button>`).join("");
+  document.getElementById("f-meses").innerHTML = MESES.map((m, i) => `<button data-i="${i}" style="flex:${m.fim - m.ini + 1} 1 0">${NOMES_MES[m.m]}</button>`).join("");
+  fSem.innerHTML = Array.from({length: 26}, (_, w) => {
+    const n = BASE.filter(r => r.dias.slice(w * 7, w * 7 + 7).some(p => p && p[0] < r.faixa[0])).length;
+    return `<div class="sem" style="--q:${Math.min(100, n * 30)}%" title="Semana de ${dt(iso(w * 7))}: ${n} rota(s) abaixo do normal"></div>`; }).join("");
+  document.getElementById("conteudo").hidden = false;
+  document.getElementById("estado").hidden = true;
+  aplicar();
+}
+
+fetch("api/radar").then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(d => { if (!d.rotas.length) throw new Error("vazio"); iniciar(d); })
+  .catch(e => { document.getElementById("estado").textContent = e.message === "vazio"
+    ? "Ainda não há preços coletados. O Radar aparece depois da primeira coleta."
+    : "Não consegui carregar os preços agora. Recarregue a página em instantes."; });
+</script>
+</body>
+</html>
