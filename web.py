@@ -1,21 +1,24 @@
-"""Página de chat com o agente. Rode com: python web.py (usa a porta da variável PORT, padrão 8080)"""
+"""Páginas do site: chat com o agente (/) e Radar de preços (/radar). Rode com: python web.py (usa a porta da variável PORT, padrão 8080)"""
 import logging
 import os
 import secrets
 from pathlib import Path
 
 import anthropic
+import psycopg
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
 
 import agente
+import radar
 
 log = logging.getLogger("web")
 app = FastAPI(title="Caçador de Passagens")
 seguranca = HTTPBasic(realm="Cacador de Passagens")
 PAGINA = (Path(__file__).parent / "chat.html").read_text(encoding="utf-8")
+PAGINA_RADAR = (Path(__file__).parent / "radar.html").read_text(encoding="utf-8")
 
 
 def autenticar(cred: HTTPBasicCredentials = Depends(seguranca)):
@@ -39,6 +42,22 @@ class Pergunta(BaseModel):
 @app.get("/", response_class=HTMLResponse, dependencies=[Depends(autenticar)])
 def pagina():
     return PAGINA
+
+
+@app.get("/radar", response_class=HTMLResponse, dependencies=[Depends(autenticar)])
+def pagina_radar():
+    return PAGINA_RADAR
+
+
+@app.get("/api/radar", dependencies=[Depends(autenticar)])
+def api_radar():
+    try:
+        with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+            conn.execute("SET TRANSACTION READ ONLY")
+            return radar.dados(conn)
+    except psycopg.Error:
+        log.exception("Radar: falha ao ler o banco")
+        raise HTTPException(503, "Não consegui ler o banco agora. Tente de novo.")
 
 
 @app.post("/api/perguntar", dependencies=[Depends(autenticar)])
