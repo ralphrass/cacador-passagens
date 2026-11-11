@@ -4,7 +4,7 @@ Roda uma vez por dia no Railway, às 7h de Brasília (10:00 UTC, mude com `HORA_
 
 | Tabela | O que guarda | Fonte |
 |---|---|---|
-| `rotas` | As 14 rotas ativas: 13 saindo de GRU (Lisboa, Madri, Paris, Roma, Londres, Frankfurt, Munique, Berlim, Amsterdã, Dublin, Maceió, Natal, Aracaju) e Passo Fundo saindo de GRU, CGH ou VCP, qualquer mês, viagens de 2 a 15 dias | lista no `schema.sql` |
+| `rotas` | As 14 rotas principais (mais 19 trechos só com preço diário, veja abaixo): 13 saindo de GRU (Lisboa, Madri, Paris, Roma, Londres, Frankfurt, Munique, Berlim, Amsterdã, Dublin, Maceió, Natal, Aracaju) e Passo Fundo saindo de GRU, CGH ou VCP, qualquer mês, viagens de 2 a 15 dias | lista no `schema.sql` |
 | `precos_tp` | Ida e volta de 7 a 15 dias nos próximos 6 meses, um retrato por dia | Travelpayouts (grátis) |
 | `descoberta` | Destinos mais baratos saindo de São Paulo | Travelpayouts (grátis) |
 | `buscas` + `ofertas` | Busca confirmada no Google Flights: menor preço, nível, faixa típica e voos | SerpApi (cota) |
@@ -44,16 +44,27 @@ Variáveis opcionais: `MESES_A_FRENTE` (padrão 6), `LIMITE_MENSAL_SERPAPI` (pad
 
 ## Agente de IA (página web)
 
-`web.py` serve um chat em que você pergunta em português ("qual o mês mais barato para Lisboa?") e o Claude responde consultando o banco. O agente (`agente.py`) usa o tool runner do SDK da Anthropic com uma ferramenta, `consultar_sql`, que roda **um único SELECT** numa transação somente leitura (limite de 15 s e 200 linhas).
+`web.py` serve, em `/chat`, um chat em que você pergunta em português ("qual o mês mais barato para Lisboa?") e o Claude responde consultando o banco. O agente (`agente.py`) usa o tool runner do SDK da Anthropic com uma ferramenta, `consultar_sql`, que roda **um único SELECT** numa transação somente leitura (limite de 15 s e 200 linhas).
 
 Para subir no Railway, no mesmo projeto:
 1. **New > GitHub Repo** e escolha este repositório de novo (vira um segundo serviço).
 2. Em **Variables**: `SERVICO` = `web`, `PORT` = `8080`, `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`, `ANTHROPIC_API_KEY` (console.anthropic.com) e `APP_SENHA` (a senha da página; o usuário é `ralph`, ou defina `APP_USUARIO`).
 3. Em **Settings > Networking**, clique em **Generate Domain** para ter a URL.
 
-## Radar (página `/radar`)
+## Site de análise (página inicial)
 
-No mesmo serviço web, `/radar` mostra o que vale a pena agora: um filtro de período dos próximos 6 meses (arrastar sobre as semanas, tocar num mês ou digitar as datas), um mapa com um ponto colorido por destino, a curadoria (no máximo três rotas abaixo da faixa típica) e um termômetro por trecho. `radar.py` monta os dados em `/api/radar`: o menor preço por dia de ida vem da coleta mais recente da `precos_tp`; a faixa típica vem da última busca confirmada no Google (`buscas`) ou, se a rota ainda não tem busca, dos preços coletados nos últimos 90 dias. Os pontos vazados do mapa são os destinos da tabela `descoberta`. Para um destino novo aparecer no mapa, inclua as coordenadas dele em `CIDADES`, no `radar.py`.
+O serviço web abre o site em `/` e o chat com o assistente em `/chat`. O site (`site.html`) tem quatro telas:
+
+- **Promoções**: datas com preço pelo menos 12% abaixo do normal do trecho, em lista ou no mapa, com filtro por mês de ida. Um trecho pode ter mais de uma promoção, em datas diferentes.
+- **Trechos**: todos os destinos ativos, com busca. Cada trecho abre a análise: menor preço de hoje, normal dos últimos 90 dias, gráfico do histórico, gráfico do preço por data de ida e as melhores datas.
+- **Alertas**: cria, lista e remove alertas de preço (trecho, preço máximo e meses de ida) e mostra os avisos já enviados.
+- **Coletas**: o diário das coletas (trechos com preço, preços gravados, buscas no Google, avisos) e as últimas conferências no Google Flights.
+
+`painel.py` monta tudo em `/api/dados`. O "normal" de um trecho é a mediana do menor preço de cada coleta nos últimos 90 dias e só existe a partir de 5 coletas. Os alertas ficam em `regras_alerta`; no fim de cada coleta, `alertas.py` compara cada regra com o menor preço do dia e manda o e-mail (o mesmo alerta só repete se o preço cair mais 5%). Cada execução do coletor grava uma linha em `coletas`.
+
+### Trechos só com preço diário
+
+A coluna `confirmar` da tabela `rotas` separa dois níveis. Com `true` (as rotas principais), o trecho entra na fila de buscas da SerpApi. Com `false`, ele só recebe o preço diário gratuito da Travelpayouts, então a lista pode crescer sem diluir a cota. Para um destino novo aparecer no mapa, inclua as coordenadas em `COORDENADAS`, no `painel.py`.
 
 ## Rodar e testar localmente
 

@@ -134,8 +134,10 @@ def escolher_buscas(conn, rotas, hoje):
     """Uma candidata por rota: o par de datas mais barato visto hoje na Travelpayouts."""
     candidatas = []
     for rota_id, nome, *_ in rotas:
-        de, ate, meses = conn.execute(
-            "SELECT ida_de, ida_ate, meses_ida FROM rotas WHERE id = %s", (rota_id,)).fetchone()
+        de, ate, meses, confirmar = conn.execute(
+            "SELECT ida_de, ida_ate, meses_ida, confirmar FROM rotas WHERE id = %s", (rota_id,)).fetchone()
+        if not confirmar:   # trecho só com preço diário: não gasta a cota da SerpApi
+            continue
         if meses:  # meses próprios da rota (ex.: Nordeste): ignora a janela global
             janela = None
             ida_min, ida_max = hoje + timedelta(days=7), date.max
@@ -255,9 +257,24 @@ def buscar_serpapi(conn, rotas, hoje):
                  dados.get("price_insights", {}).get("lowest_price"))
 
 
+def registrar_coleta(conn, inicio, trechos_ativos):
+    """Grava no diário o que esta execução fez, para a tela de auditoria do site."""
+    conn.execute(
+        """INSERT INTO coletas (iniciada_em, trechos_ativos, trechos_com_preco, precos, buscas, avisos)
+           SELECT %(i)s, %(n)s,
+                  (SELECT count(DISTINCT rota_id) FROM precos_tp WHERE coletado_em >= %(i)s),
+                  (SELECT count(*) FROM precos_tp WHERE coletado_em >= %(i)s),
+                  (SELECT count(*) FROM buscas WHERE buscado_em >= %(i)s),
+                  (SELECT count(*) FROM alertas WHERE enviado_em >= %(i)s)
+                  + (SELECT count(*) FROM avisos_regra WHERE enviado_em >= %(i)s)""",
+        {"i": inicio, "n": trechos_ativos})
+    conn.commit()
+
+
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     hoje = date.today()
+    inicio = datetime.now(timezone.utc)
     with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
         conn.execute(Path(__file__).with_name("schema.sql").read_text())
         conn.commit()
@@ -275,6 +292,7 @@ def main():
         ultima_busca = conn.execute("SELECT coalesce(max(id), 0) FROM buscas").fetchone()[0]
         buscar_serpapi(conn, rotas, hoje)
         alertas.processar(conn, ultima_busca)
+        registrar_coleta(conn, inicio, len(rotas))
 
 
 if __name__ == "__main__":

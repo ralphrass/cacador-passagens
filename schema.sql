@@ -88,28 +88,52 @@ ALTER TABLE rotas ADD COLUMN IF NOT EXISTS dias_max int;
 -- idas daquela rota a certos meses (ex.: Nordeste em nov, dez, fev e mar, sem janeiro).
 -- Passo Fundo: qualquer mês (visitas à família), saindo de qualquer aeroporto de São Paulo,
 -- viagens de 2 a 15 dias. Nas demais rotas, dias_min/dias_max vazios = 7 a 15 dias.
-INSERT INTO rotas (nome, origem, destino_tp, destino_serpapi, ativa, meses_ida, dias_min, dias_max) VALUES
-    ('Lisboa',      'GRU',         'LIS', 'LIS',     true,   NULL,                             NULL,  NULL),
-    ('Madri',       'GRU',         'MAD', 'MAD',     true,   NULL,                             NULL,  NULL),
-    ('Paris',       'GRU',         'PAR', 'CDG,ORY', true,   NULL,                             NULL,  NULL),
-    ('Roma',        'GRU',         'ROM', 'FCO',     true,   NULL,                             NULL,  NULL),
-    ('Londres',     'GRU',         'LON', 'LHR,LGW', true,   NULL,                             NULL,  NULL),
-    ('Frankfurt',   'GRU',         'FRA', 'FRA',     true,   NULL,                             NULL,  NULL),
-    ('Munique',     'GRU',         'MUC', 'MUC',     true,   NULL,                             NULL,  NULL),
-    ('Berlim',      'GRU',         'BER', 'BER',     true,   NULL,                             NULL,  NULL),
-    ('Amsterdã',    'GRU',         'AMS', 'AMS',     true,   NULL,                             NULL,  NULL),
-    ('Dublin',      'GRU',         'DUB', 'DUB',     true,   NULL,                             NULL,  NULL),
-    ('Maceió',      'GRU',         'MCZ', 'MCZ',     true,   '{11,12,2,3}',                    NULL,  NULL),
-    ('Natal',       'GRU',         'NAT', 'NAT',     true,   '{11,12,2,3}',                    NULL,  NULL),
-    ('Aracaju',     'GRU',         'AJU', 'AJU',     true,   '{11,12,2,3}',                    NULL,  NULL),
-    ('Passo Fundo', 'GRU,CGH,VCP', 'PFB', 'PFB',     true,   '{1,2,3,4,5,6,7,8,9,10,11,12}',   2,     15),
-    ('Santiago',    'GRU',         'SCL', 'SCL',     false,  NULL,                             NULL,  NULL),
-    ('Orlando',     'GRU',         'ORL', 'MCO',     false,  NULL,                             NULL,  NULL),
-    ('Nova York',   'GRU',         'NYC', 'JFK,EWR', false,  NULL,                             NULL,  NULL)
+-- confirmar = false: o trecho só tem o preço diário gratuito da Travelpayouts e não gasta a cota da
+-- SerpApi. É assim que a lista cresce sem diluir as buscas confirmadas das rotas principais.
+ALTER TABLE rotas ADD COLUMN IF NOT EXISTS confirmar boolean NOT NULL DEFAULT true;
+
+INSERT INTO rotas (nome, origem, destino_tp, destino_serpapi, ativa, meses_ida, dias_min, dias_max, confirmar) VALUES
+    ('Lisboa',      'GRU',         'LIS', 'LIS',     true,   NULL,                             NULL,  NULL,  true),
+    ('Madri',       'GRU',         'MAD', 'MAD',     true,   NULL,                             NULL,  NULL,  true),
+    ('Paris',       'GRU',         'PAR', 'CDG,ORY', true,   NULL,                             NULL,  NULL,  true),
+    ('Roma',        'GRU',         'ROM', 'FCO',     true,   NULL,                             NULL,  NULL,  true),
+    ('Londres',     'GRU',         'LON', 'LHR,LGW', true,   NULL,                             NULL,  NULL,  true),
+    ('Frankfurt',   'GRU',         'FRA', 'FRA',     true,   NULL,                             NULL,  NULL,  true),
+    ('Munique',     'GRU',         'MUC', 'MUC',     true,   NULL,                             NULL,  NULL,  true),
+    ('Berlim',      'GRU',         'BER', 'BER',     true,   NULL,                             NULL,  NULL,  true),
+    ('Amsterdã',    'GRU',         'AMS', 'AMS',     true,   NULL,                             NULL,  NULL,  true),
+    ('Dublin',      'GRU',         'DUB', 'DUB',     true,   NULL,                             NULL,  NULL,  true),
+    ('Maceió',      'GRU',         'MCZ', 'MCZ',     true,   '{11,12,2,3}',                    NULL,  NULL,  true),
+    ('Natal',       'GRU',         'NAT', 'NAT',     true,   '{11,12,2,3}',                    NULL,  NULL,  true),
+    ('Aracaju',     'GRU',         'AJU', 'AJU',     true,   '{11,12,2,3}',                    NULL,  NULL,  true),
+    ('Passo Fundo', 'GRU,CGH,VCP', 'PFB', 'PFB',     true,   '{1,2,3,4,5,6,7,8,9,10,11,12}',   2,     15,  true),
+    ('Santiago',    'GRU',         'SCL', 'SCL',     false,  NULL,                             NULL,  NULL,  true),
+    ('Orlando',     'GRU',         'ORL', 'MCO',     false,  NULL,                             NULL,  NULL,  true),
+    ('Nova York',   'GRU',         'NYC', 'JFK,EWR', false,  NULL,                             NULL,  NULL,  true),
+    ('Barcelona', 'GRU', 'BCN', 'BCN', true, NULL, NULL, NULL, false),
+    ('Milão', 'GRU', 'MIL', 'MXP', true, NULL, NULL, NULL, false),
+    ('Porto', 'GRU', 'OPO', 'OPO', true, NULL, NULL, NULL, false),
+    ('Zurique', 'GRU', 'ZRH', 'ZRH', true, NULL, NULL, NULL, false),
+    ('Viena', 'GRU', 'VIE', 'VIE', true, NULL, NULL, NULL, false),
+    ('Atenas', 'GRU', 'ATH', 'ATH', true, NULL, NULL, NULL, false),
+    ('Istambul', 'GRU', 'IST', 'IST', true, NULL, NULL, NULL, false),
+    ('Salvador', 'GRU', 'SSA', 'SSA', true, NULL, 3, 15, false),
+    ('Recife', 'GRU', 'REC', 'REC', true, NULL, 3, 15, false),
+    ('Fortaleza', 'GRU', 'FOR', 'FOR', true, NULL, 3, 15, false),
+    ('Florianópolis', 'GRU', 'FLN', 'FLN', true, NULL, 3, 15, false),
+    ('Porto Alegre', 'GRU', 'POA', 'POA', true, NULL, 3, 15, false),
+    ('Foz do Iguaçu', 'GRU', 'IGU', 'IGU', true, NULL, 3, 15, false),
+    ('Buenos Aires', 'GRU', 'BUE', 'EZE,AEP', true, NULL, 3, 15, false),
+    ('Montevidéu', 'GRU', 'MVD', 'MVD', true, NULL, 3, 15, false),
+    ('Lima', 'GRU', 'LIM', 'LIM', true, NULL, NULL, NULL, false),
+    ('Bogotá', 'GRU', 'BOG', 'BOG', true, NULL, NULL, NULL, false),
+    ('Miami', 'GRU', 'MIA', 'MIA', true, NULL, NULL, NULL, false),
+    ('Cancún', 'GRU', 'CUN', 'CUN', true, NULL, NULL, NULL, false)
 ON CONFLICT (origem, destino_tp) DO UPDATE
     SET nome = EXCLUDED.nome, destino_serpapi = EXCLUDED.destino_serpapi,
         ativa = EXCLUDED.ativa, meses_ida = EXCLUDED.meses_ida, ida_de = NULL,
-        dias_min = EXCLUDED.dias_min, dias_max = EXCLUDED.dias_max;
+        dias_min = EXCLUDED.dias_min, dias_max = EXCLUDED.dias_max,
+        confirmar = EXCLUDED.confirmar;
 
 -- Alertas já enviados, para não repetir o mesmo aviso todo dia.
 CREATE TABLE IF NOT EXISTS alertas (
@@ -123,3 +147,38 @@ CREATE TABLE IF NOT EXISTS alertas (
     motivo      text NOT NULL
 );
 CREATE INDEX IF NOT EXISTS alertas_rota ON alertas (rota_id, ida, volta);
+
+-- Alertas criados pelo usuário no site: avisa quando o trecho tiver ida nos meses escolhidos
+-- (1 a 12; mes_de > mes_ate atravessa a virada do ano) por até preco_max.
+CREATE TABLE IF NOT EXISTS regras_alerta (
+    id         serial PRIMARY KEY,
+    criada_em  timestamptz NOT NULL DEFAULT now(),
+    rota_id    int NOT NULL REFERENCES rotas(id),
+    preco_max  numeric(10,2) NOT NULL,
+    mes_de     int NOT NULL,
+    mes_ate    int NOT NULL
+);
+
+-- Avisos enviados por causa de uma regra (o histórico fica mesmo se a regra for removida).
+CREATE TABLE IF NOT EXISTS avisos_regra (
+    id          bigserial PRIMARY KEY,
+    enviado_em  timestamptz NOT NULL DEFAULT now(),
+    regra_id    int REFERENCES regras_alerta(id) ON DELETE SET NULL,
+    rota_id     int NOT NULL REFERENCES rotas(id),
+    ida         date NOT NULL,
+    volta       date NOT NULL,
+    preco       numeric(10,2) NOT NULL,
+    preco_max   numeric(10,2) NOT NULL
+);
+
+-- Diário das coletas, para a tela de auditoria.
+CREATE TABLE IF NOT EXISTS coletas (
+    id                 bigserial PRIMARY KEY,
+    iniciada_em        timestamptz NOT NULL,
+    terminada_em       timestamptz NOT NULL DEFAULT now(),
+    trechos_ativos     int NOT NULL,
+    trechos_com_preco  int NOT NULL,
+    precos             int NOT NULL,
+    buscas             int NOT NULL,
+    avisos             int NOT NULL
+);

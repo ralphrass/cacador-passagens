@@ -21,13 +21,13 @@ def sql(q):
 
 def test_consulta_de_leitura(banco):
     r = json.loads(sql("SELECT nome FROM rotas WHERE nome LIKE 'L%' ORDER BY nome"))
-    assert r["linhas"] == [["Lisboa"], ["Londres"]]
+    assert r["linhas"] == [["Lima"], ["Lisboa"], ["Londres"]]
 
 
 def test_bloqueia_escrita_e_varios_comandos(banco):
     assert "read-only" in sql("DELETE FROM rotas")
     assert "multiple commands" in sql("COMMIT; DELETE FROM rotas")
-    assert banco.execute("SELECT count(*) FROM rotas").fetchone()[0] == 17
+    assert banco.execute("SELECT count(*) FROM rotas").fetchone()[0] == 36
 
 
 def test_erro_volta_como_texto(banco):

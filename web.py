@@ -1,4 +1,4 @@
-"""Páginas do site: chat com o agente (/) e Radar de preços (/radar). Rode com: python web.py (usa a porta da variável PORT, padrão 8080)"""
+"""Site: análise de preços e alertas (/) e chat com o agente (/chat). Rode com: python web.py (usa a porta da variável PORT, padrão 8080)"""
 import logging
 import os
 import secrets
@@ -7,18 +7,20 @@ from pathlib import Path
 import anthropic
 import psycopg
 from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.responses import HTMLResponse
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
 
 import agente
-import radar
+import painel
 
 log = logging.getLogger("web")
 app = FastAPI(title="Caçador de Passagens")
+app.add_middleware(GZipMiddleware, minimum_size=2000)
 seguranca = HTTPBasic(realm="Cacador de Passagens")
-PAGINA = (Path(__file__).parent / "chat.html").read_text(encoding="utf-8")
-PAGINA_RADAR = (Path(__file__).parent / "radar.html").read_text(encoding="utf-8")
+PAGINA = (Path(__file__).parent / "site.html").read_text(encoding="utf-8")
+PAGINA_CHAT = (Path(__file__).parent / "chat.html").read_text(encoding="utf-8")
 
 
 def autenticar(cred: HTTPBasicCredentials = Depends(seguranca)):
@@ -44,20 +46,52 @@ def pagina():
     return PAGINA
 
 
-@app.get("/radar", response_class=HTMLResponse, dependencies=[Depends(autenticar)])
-def pagina_radar():
-    return PAGINA_RADAR
+class Regra(BaseModel):
+    rota_id: int
+    preco_max: float = Field(gt=0, lt=1_000_000)
+    mes_de: int = Field(ge=1, le=12)
+    mes_ate: int = Field(ge=1, le=12)
 
 
-@app.get("/api/radar", dependencies=[Depends(autenticar)])
-def api_radar():
+def banco():
     try:
-        with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
-            conn.execute("SET TRANSACTION READ ONLY")
-            return radar.dados(conn)
+        return psycopg.connect(os.environ["DATABASE_URL"])
     except psycopg.Error:
-        log.exception("Radar: falha ao ler o banco")
+        log.exception("Falha ao conectar no banco")
         raise HTTPException(503, "Não consegui ler o banco agora. Tente de novo.")
+
+
+@app.get("/chat", response_class=HTMLResponse, dependencies=[Depends(autenticar)])
+def pagina_chat():
+    return PAGINA_CHAT
+
+
+@app.get("/radar", include_in_schema=False)
+def radar_antigo():
+    return RedirectResponse("/")
+
+
+@app.get("/api/dados", dependencies=[Depends(autenticar)])
+def api_dados():
+    with banco() as conn:
+        return painel.dados(conn)
+
+
+@app.post("/api/alertas", dependencies=[Depends(autenticar)])
+def criar_alerta(r: Regra):
+    with banco() as conn:
+        regra_id = painel.criar_regra(conn, r.rota_id, r.preco_max, r.mes_de, r.mes_ate)
+    if regra_id is None:
+        raise HTTPException(404, "Trecho não encontrado")
+    return {"id": regra_id}
+
+
+@app.delete("/api/alertas/{regra_id}", dependencies=[Depends(autenticar)])
+def remover_alerta(regra_id: int):
+    with banco() as conn:
+        if not painel.remover_regra(conn, regra_id):
+            raise HTTPException(404, "Alerta não encontrado")
+    return {"ok": True}
 
 
 @app.post("/api/perguntar", dependencies=[Depends(autenticar)])
