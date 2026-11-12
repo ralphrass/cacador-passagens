@@ -53,14 +53,14 @@ Para subir no Railway, no mesmo projeto:
 
 ## Site de análise (página inicial)
 
-O serviço web abre o site em `/` e o chat com o assistente em `/chat`. O site (`site.html`) tem quatro telas:
+O serviço web abre o site em `/` e o chat com o assistente em `/chat`. O site (`site.html`) é uma coluna pensada para o celular, com duas telas principais:
 
-- **Promoções**: datas com preço pelo menos 12% abaixo do normal do trecho, em lista ou no mapa, com filtro por mês de ida. Um trecho pode ter mais de uma promoção, em datas diferentes.
-- **Trechos**: todos os destinos ativos, com busca. Cada trecho abre a análise: menor preço de hoje, normal dos últimos 90 dias, gráfico do histórico, gráfico do preço por data de ida e as melhores datas.
-- **Alertas**: cria, lista e remove alertas de preço (trecho, preço máximo e meses de ida) e mostra os avisos já enviados.
-- **Coletas**: o diário das coletas (trechos com preço, preços gravados, buscas no Google, avisos) e as últimas conferências no Google Flights.
+- **Início**: busca de destino, as melhores oportunidades do momento (cartões com preço, preço médio riscado, desconto e datas de ida), os trechos que você monitora e a lista de todos os destinos.
+- **Trecho**: veredito em uma frase, régua de quatro zonas (ótima oferta, bom preço, preço justo, espere), menor preço atual, botão Monitorar, calendário com o preço por dia de ida, uma estimativa do que esperar e o histórico de 90 dias.
 
-`painel.py` monta tudo em `/api/dados`. O "normal" de um trecho é a mediana do menor preço de cada coleta nos últimos 90 dias e só existe a partir de 5 coletas. Os alertas ficam em `regras_alerta`; no fim de cada coleta, `alertas.py` compara cada regra com o menor preço do dia e manda o e-mail (o mesmo alerta só repete se o preço cair mais 5%). Cada execução do coletor grava uma linha em `coletas`.
+A régua compara o menor preço de hoje com a média do trecho: 20% ou mais abaixo é ótima oferta, 8% ou mais é bom preço, até 8% acima é preço justo, e o resto é espere. O botão Monitorar cria uma regra em `regras_alerta` com limite 8% abaixo da média (qualquer mês); tocar de novo remove. Em "Coletas e avisos", no rodapé, ficam o diário das coletas, os avisos enviados e as conferências no Google Flights.
+
+`painel.py` monta tudo em `/api/dados`. A média de um trecho é a mediana do menor preço de cada coleta nos últimos 90 dias e só existe a partir de 5 coletas. Os alertas ficam em `regras_alerta`; no fim de cada coleta, `alertas.py` compara cada regra com o menor preço do dia e manda o e-mail (o mesmo alerta só repete se o preço cair mais 5%). Cada execução do coletor grava uma linha em `coletas`.
 
 ### Trechos só com preço diário
 
