@@ -2,6 +2,7 @@
 
 A variável SERVICO escolhe o que roda:
 - SERVICO=web: a página de chat com o agente (porta da variável PORT).
+- SERVICO=prototipo: o protótipo novo, com dados de teste (porta da variável PORT).
 - qualquer outro valor ou vazio: o coletor, que fica rodando e coleta uma vez por dia
   na hora HORA_COLETA_UTC (padrão 10, ou seja, 7h de Brasília).
 """
@@ -40,10 +41,21 @@ def rodar_web():
     uvicorn.run(web.app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
 
+def rodar_prototipo():
+    import uvicorn
+
+    from prototipo.app import app
+
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    if os.environ.get("SERVICO", "").strip().lower() == "web":
+    servico = os.environ.get("SERVICO", "").strip().lower()
+    if servico == "web":
         rodar_web()
+    elif servico == "prototipo":
+        rodar_prototipo()
     else:
         if os.environ.get("COLETAR_AGORA") == "1":  # uma coleta já, depois segue o horário normal
             import coletor
