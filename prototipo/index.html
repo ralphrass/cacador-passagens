@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caçador de Passagens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fundo:#f6f5f1; --cartao:#fff; --tinta:#17191c; --suave:#55595f; --linha:#e2dfd6; --borda:#c9c6bd;
+  --laranja:#ea580c; --laranja-forte:#c2410c; --laranja-medio:#fdba74; --laranja-claro:#fde7d3; --texto-oferta:#9a3412;
+  --neutro:#ebe9e3; --sombra:0 4px 18px rgba(23,25,28,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--fundo);color:var(--tinta);font-family:Inter,system-ui,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:#1d4ed8}
+.app{max-width:480px;margin:0 auto;min-height:100vh;padding:0 16px 96px}
+h1,h2,.titulo{font-family:'Space Grotesk',sans-serif;margin:0}
+h1{font-size:28px;line-height:1.1}
+.sub{font-size:13px;color:var(--suave)}
+.rotulo{font-size:11px;color:var(--suave);text-transform:uppercase;letter-spacing:.05em;margin:18px 4px 8px}
+.topo{padding:20px 4px 8px;display:flex;flex-direction:column;gap:4px}
+.faixas{display:flex;background:var(--neutro);border-radius:12px;padding:3px;margin:8px 0 4px}
+.faixas button{flex:1;border:0;background:transparent;border-radius:10px;min-height:40px;font-size:13px;font-weight:500;color:var(--suave)}
+.faixas button.ativo{background:var(--cartao);color:var(--tinta);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
+.chip{flex:none;min-height:36px;padding:0 14px;border-radius:18px;border:1px solid var(--borda);background:var(--cartao);font-size:13px;font-weight:500}
+.chip.ativo{background:var(--tinta);color:#fff;border-color:var(--tinta)}
+.cartao{background:var(--cartao);border-radius:16px;padding:16px;box-shadow:var(--sombra);display:flex;flex-direction:column;gap:10px;border:0;text-align:left;width:100%}
+.lista{display:flex;flex-direction:column;gap:10px}
+.linha-topo{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.nome{font:700 20px 'Space Grotesk',sans-serif}
+.desc{font-weight:600;font-size:13px;color:var(--texto-oferta);white-space:nowrap}
+.info{font-size:13px;color:#33373c}
+.barra-seg{display:flex;gap:3px}.barra-seg i{flex:1;height:6px;border-radius:3px;background:var(--linha)}.barra-seg i.on{background:var(--laranja)}
+.trilho{height:6px;border-radius:3px;background:var(--linha)}.trilho i{display:block;height:6px;border-radius:3px;background:var(--tinta)}
+.mini{font-size:12px;color:var(--suave)}
+.encaixe{font-size:12px;color:#33373c;background:var(--fundo);border-radius:10px;padding:8px 10px}
+.viagens{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.viagem{flex:none;width:170px;padding:12px;border-radius:14px;background:var(--cartao);border:1px solid var(--linha);display:flex;flex-direction:column;gap:4px;text-align:left}
+.viagem.aberta{background:var(--tinta);color:#fff;border-color:var(--tinta)}
+.viagem .t{font:700 15px 'Space Grotesk',sans-serif}
+.viagem .s{font-size:12px;color:var(--suave)}.viagem.aberta .s{color:#c9c6bd}
+.viagem .e{font-size:13px;font-weight:600;margin-top:4px;color:var(--suave)}.viagem.aberta .e{color:var(--laranja-medio)}
+.viagem.nova{align-items:center;justify-content:center;border-style:dashed;border-color:var(--borda);color:var(--suave);font-weight:600;min-height:96px}
+.nav{position:fixed;left:0;right:0;bottom:0;background:rgba(246,245,241,.96);border-top:1px solid var(--linha);display:flex;justify-content:center;gap:8px;padding:8px 16px calc(8px + env(safe-area-inset-bottom))}
+.nav button{flex:1;max-width:220px;min-height:48px;border:0;border-radius:12px;background:transparent;font-weight:600;color:var(--suave)}
+.nav button.ativo{background:var(--tinta);color:#fff}
+.radar{width:100%;height:auto;display:block;margin:4px 0}
+.radar text{font-family:Inter,sans-serif}
+.radar .ponto{cursor:pointer}
+.legenda{font-size:12px;color:var(--suave);line-height:1.4;margin:0 4px}
+.selecao{margin-top:12px}
+.botao{min-height:44px;border-radius:12px;border:0;background:var(--tinta);color:#fff;font-weight:600;font-size:14px;width:100%}
+.botao.leve{background:transparent;border:1px solid var(--borda);color:var(--tinta)}
+.botao.pequeno{min-height:36px;width:auto;padding:0 12px;font-size:13px}
+.ondas-cab{display:grid;grid-template-columns:96px repeat(26,minmax(0,1fr));gap:2px;font-size:10px;color:var(--suave);text-transform:uppercase;margin:6px 0 2px;padding:0 8px}
+.onda{display:grid;grid-template-columns:96px 1fr;gap:0;align-items:center;width:100%;border:0;background:transparent;padding:6px 8px;border-radius:10px;text-align:left;min-height:52px}
+.onda:hover{background:var(--cartao)}
+.onda .n{font-weight:600;font-size:14px}.onda .p{font-size:11px;color:var(--suave)}
+.barras{height:44px;display:grid;grid-template-columns:repeat(26,minmax(0,1fr));gap:2px;align-items:end;border-bottom:1px solid var(--borda)}
+.barras i{display:block;border-radius:2px 2px 0 0}
+.voltar{border:0;background:transparent;font-weight:600;min-height:44px;padding:0 4px;color:var(--suave)}
+.mes{margin-top:14px}
+.mes h3{font:600 14px Inter,sans-serif;margin:0 4px 6px;text-transform:capitalize}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal .ds{font-size:10px;color:var(--suave);text-align:center}
+.dia{aspect-ratio:1;border:0;border-radius:8px;font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:center;min-height:36px}
+.dia.sel{outline:3px solid var(--tinta);outline-offset:1px}
+.escala{display:flex;gap:6px;align-items:center;font-size:11px;color:var(--suave);margin:8px 4px 0;flex-wrap:wrap}
+.escala i{width:14px;height:14px;border-radius:4px;display:inline-block}
+.detalhe{position:sticky;bottom:72px;margin-top:14px}
+.fundo-folha{position:fixed;inset:0;background:rgba(23,25,28,.4);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+.folha{background:var(--fundo);width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:20px 16px 28px;max-height:90vh;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.folha label{font-size:13px;font-weight:600;margin-top:10px}
+.folha input{min-height:44px;border-radius:12px;border:1px solid var(--borda);padding:0 12px;font:inherit;background:var(--cartao)}
+.chips.quebra{flex-wrap:wrap;overflow:visible}
+.vazio{padding:24px;text-align:center;color:var(--suave);font-size:14px}
+.aviso{font-size:11px;color:var(--suave);text-align:center;margin:18px 0 0}
+</style>
+</head>
+<body>
+<div class="app" id="app"><div class="vazio">Carregando…</div></div>
+<nav class="nav" id="nav">
+  <button data-tela="inicio">Início</button>
+  <button data-tela="explorar">Explorar</button>
+</nav>
+<div id="folha"></div>
+<script>
+const LIMIAR = 0.15;
+const FAIXAS = {curta: 'Curtas · 2–5 dias', media: 'Médias · 6–12', longa: 'Longas · 13–20'};
+const TAGS = ['Todos', 'Europa', 'Praia', 'Família', 'Brasil', 'América do Sul', 'EUA'];
+const SETORES = {'Nordeste': -8, 'Europa': 86, 'Sul': 180, 'América do Sul': 225, 'EUA': 288};
+const DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const EMBUTIDO = window.DADOS_EMBUTIDOS || null;
+
+const estado = {faixa: 'media', tela: 'inicio', modo: 'radar', tag: 'Todos', trecho: null, mesTrecho: null,
+                dia: null, radarSel: null, voltarPara: 'inicio'};
+const cache = {};
+let viagens = [];
+
+// ---------- dados ----------
+async function dados(faixa) {
+  if (!cache[faixa]) cache[faixa] = EMBUTIDO ? EMBUTIDO[faixa] : await (await fetch('/api/dados?faixa=' + faixa)).json();
+  return cache[faixa];
+}
+const VIAGENS_EXEMPLO = [
+  {id: 1, nome: 'Visitar a família', destinos: ['PFB'], meses: [], faixa: 'curta'},
+  {id: 2, nome: 'Europa em março', destinos: ['LIS', 'MAD', 'PAR', 'ROM'], meses: [3], faixa: 'media'},
+];
+function lerLocal() { try { return JSON.parse(localStorage.getItem('cacador-viagens')); } catch (e) { return null; } }
+function gravarLocal() { try { localStorage.setItem('cacador-viagens', JSON.stringify(viagens)); } catch (e) {} }
+async function carregarViagens() {
+  viagens = EMBUTIDO ? (lerLocal() || VIAGENS_EXEMPLO.slice()) : await (await fetch('/api/viagens')).json();
+}
+async function criarViagem(v) {
+  if (EMBUTIDO) { viagens.push({id: Date.now(), ...v}); gravarLocal(); return; }
+  const r = await fetch('/api/viagens', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(v)});
+  if (r.ok) viagens.push(await r.json());
+}
+async function apagarViagem(id) {
+  if (!EMBUTIDO) await fetch('/api/viagens/' + id, {method: 'DELETE'});
+  viagens = viagens.filter(v => v.id !== id); gravarLocal();
+}
+
+// ---------- utilidades ----------
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const brl = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+const pct = d => Math.round(Math.abs(d) * 100) + '%';
+const dataBR = iso => { const [a, m, d] = iso.split('-'); return d + '/' + m; };
+const somaDias = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const nomeMes = (D, m) => (D.meses.find(x => x.mes === m) || {nome: ''}).nome;
+function corDesconto(d) {
+  if (d >= 0.25) return ['#9a3412', '#fff'];
+  if (d >= LIMIAR) return ['#c2410c', '#fff'];
+  if (d >= 0.08) return ['#fdba74', '#17191c'];
+  if (d >= 0.03) return ['#fde7d3', '#17191c'];
+  return ['#ebe9e3', '#55595f'];
+}
+function textoRaridade(j) {
+  if (!j.vezes_ano) return 'Nunca vimos tão barato nos últimos 2 anos';
+  if (j.vezes_ano < 1) return 'Aparece menos de uma vez por ano';
+  return 'Aparece umas ' + String(j.vezes_ano).replace('.', ',') + ' vezes por ano';
+}
+function passaFiltro(d) { return estado.tag === 'Todos' || d.tags.includes(estado.tag); }
+function melhoresPorDestino(janelas) {
+  const vistos = new Set();
+  return janelas.filter(j => !vistos.has(j.codigo) && vistos.add(j.codigo));
+}
+
+async function statusViagem(v) {
+  const D = await dados(v.faixa);
+  let melhor = null;
+  for (const d of D.destinos) {
+    if (!v.destinos.includes(d.codigo)) continue;
+    for (const m of d.mensal) {
+      if (v.meses.length && !v.meses.includes(m.mes)) continue;
+      if (!melhor || m.desconto > melhor.desconto) melhor = {...m, nome: d.nome, codigo: d.codigo};
+    }
+  }
+  return melhor;
+}
+function viagensQueEncaixam(j) {
+  return viagens.filter(v => v.faixa === estado.faixa && v.destinos.includes(j.codigo) && (!v.meses.length || v.meses.includes(j.mes)));
+}
+
+// ---------- telas ----------
+function seletorFaixa() {
+  return '<div class="faixas" role="group" aria-label="Duração da viagem">' + Object.entries(FAIXAS).map(([k, t]) =>
+    `<button class="${estado.faixa === k ? 'ativo' : ''}" data-faixa="${k}">${t}</button>`).join('') + '</div>';
+}
+
+async function telaInicio() {
+  const D = await dados(estado.faixa);
+  const ops = melhoresPorDestino(D.janelas);
+  const status = await Promise.all(viagens.map(statusViagem));
+  const cartoesViagem = viagens.map((v, i) => {
+    const s = status[i], aberta = s && s.desconto >= LIMIAR;
+    const quando = v.meses.length ? v.meses.map(m => nomeMes(D, m) || m).join(', ') : 'qualquer mês';
+    const situacao = !s ? 'Sem preços ainda' : aberta ? `Janela aberta: ${esc(s.nome)} −${pct(s.desconto)}` : 'Vigiando, nada ainda';
+    return `<button class="viagem ${aberta ? 'aberta' : ''}" data-viagem="${v.id}">
+      <span class="t">${esc(v.nome)}</span><span class="s">${esc(quando)} · ${FAIXAS[v.faixa].split(' · ')[0].toLowerCase()}</span>
+      <span class="e">${situacao}</span></button>`;
+  }).join('');
+  const cartoesOp = ops.map(j => {
+    const seg = Math.min(12, Math.max(1, Math.ceil(j.vezes_ano || 1)));
+    const encaixa = viagensQueEncaixam(j);
+    return `<button class="cartao" data-trecho="${j.codigo}" data-mes="${j.mes}">
+      <div class="linha-topo"><span class="nome">${esc(j.nome)}</span><span class="desc">${pct(j.desconto)} abaixo do normal</span></div>
+      <div class="info">${esc(nomeMes(D, j.mes))} · ${j.dur} dias · ${brl(j.preco)} ida e volta <span class="mini">(normal ${brl(j.normal)})</span></div>
+      <div><div class="mini">${textoRaridade(j)}</div><div class="barra-seg" aria-hidden="true">${Array.from({length: 12}, (_, i) => `<i class="${i < seg ? 'on' : ''}"></i>`).join('')}</div></div>
+      <div><div class="mini">${j.dura_dias ? 'Costuma durar cerca de ' + j.dura_dias + (j.dura_dias > 1 ? ' dias' : ' dia') : 'Novidade: pode fechar rápido'}</div>
+        <div class="trilho" aria-hidden="true"><i style="width:${Math.min(100, (j.dura_dias || 1) * 12)}%"></i></div></div>
+      ${encaixa.length ? `<div class="encaixe">Encaixa na sua viagem "${esc(encaixa[0].nome)}"</div>` : ''}
+    </button>`;
+  }).join('');
+  return `<div class="topo"><span class="sub">Saindo de São Paulo</span>
+      <h1>${ops.length} ${ops.length === 1 ? 'janela aberta' : 'janelas abertas'} hoje</h1></div>
+    ${seletorFaixa()}
+    <div class="rotulo">Suas viagens</div>
+    <div class="viagens">${cartoesViagem}<button class="viagem nova" data-acao="nova-viagem">+ Nova viagem</button></div>
+    <div class="rotulo">Oportunidades para você</div>
+    <div class="lista">${cartoesOp || '<div class="vazio">Nada 15% abaixo do normal agora.</div>'}</div>
+    <p class="aviso">Protótipo com dados de teste. Os preços não são reais.</p>`;
+}
+
+function chipsTags() {
+  return '<div class="chips">' + TAGS.map(t => `<button class="chip ${estado.tag === t ? 'ativo' : ''}" data-tag="${t}">${t}</button>`).join('') + '</div>';
+}
+
+function angulos(destinos) {
+  const porRegiao = {};
+  destinos.forEach(d => (porRegiao[d.regiao] = porRegiao[d.regiao] || []).push(d));
+  const ang = {};
+  Object.entries(porRegiao).forEach(([reg, lista]) => {
+    lista.sort((a, b) => a.rumo - b.rumo);
+    const passo = reg === 'Nordeste' ? 26 : 13, centro = SETORES[reg] ?? 0;
+    lista.forEach((d, i) => { ang[d.codigo] = centro + (i - (lista.length - 1) / 2) * passo; });
+  });
+  return ang;
+}
+
+async function telaRadar(D) {
+  const meses = D.meses.slice(1, 7);
+  const destinos = D.destinos.filter(passaFiltro);
+  const ang = angulos(D.destinos);
+  const raio = i => 42 + i * 20;
+  let svg = `<svg class="radar" viewBox="-200 -178 400 356" role="img" aria-label="Radar de ofertas por mês e destino">`;
+  meses.forEach((m, i) => {
+    svg += `<circle cx="0" cy="0" r="${raio(i)}" fill="none" stroke="#c9c6bd" stroke-dasharray="3 3"/>
+      <text x="3" y="${-raio(i) + 11}" font-size="9" fill="#6b6f75">${m.nome.slice(0, 3)}</text>`;
+  });
+  svg += `<circle r="15" fill="#17191c"/><text y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">SP</text>`;
+  for (const d of destinos) {
+    const a = ang[d.codigo] * Math.PI / 180, sx = Math.sin(a), sy = -Math.cos(a);
+    const lx = 156 * sx, ly = 156 * sy + 4;
+    const anchor = sx > 0.25 ? 'start' : sx < -0.25 ? 'end' : 'middle';
+    const melhor = Math.max(...d.mensal.slice(1, 7).map(m => m.desconto));
+    svg += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" font-size="10.5" font-weight="${melhor >= LIMIAR ? 700 : 500}" fill="${melhor >= LIMIAR ? '#17191c' : '#55595f'}">${esc(d.nome)}</text>`;
+    meses.forEach((m, i) => {
+      const reg = d.mensal.find(x => x.mes === m.mes && x.ano === m.ano);
+      if (!reg) return;
+      const x = raio(i) * sx, y = raio(i) * sy;
+      const sel = estado.radarSel && estado.radarSel.codigo === d.codigo && estado.radarSel.mes === m.mes;
+      const r = reg.desconto < 0.05 ? 2.2 : 3 + Math.min(0.45, reg.desconto) * 18;
+      const [cor] = corDesconto(reg.desconto);
+      svg += `<circle class="ponto" data-radar="${d.codigo}|${m.mes}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}"
+        fill="${reg.desconto < 0.03 ? '#b8b5ad' : cor}"
+        stroke="${sel ? '#17191c' : '#f6f5f1'}" stroke-width="${sel ? 2.5 : 1}"><title>${esc(d.nome)}, ${m.nome}: ${pct(reg.desconto)} abaixo</title></circle>`;
+    });
+  }
+  svg += '</svg>';
+  let sel = '';
+  if (estado.radarSel) {
+    const d = D.destinos.find(x => x.codigo === estado.radarSel.codigo);
+    const m = d.mensal.find(x => x.mes === estado.radarSel.mes);
+    sel = `<div class="cartao selecao"><div class="linha-topo"><span class="nome">${esc(d.nome)}</span>
+      <span class="desc">${m.desconto >= 0.03 ? pct(m.desconto) + ' abaixo do normal' : 'preço normal'}</span></div>
+      <div class="info">${esc(nomeMes(D, m.mes))} · a partir de ${brl(m.preco)} ida e volta (${m.dur} dias)</div>
+      <div class="mini">Normal para o trecho: ${brl(m.normal)}</div>
+      <button class="botao" data-trecho="${d.codigo}" data-mes="${m.mes}">Ver as datas</button></div>`;
+  }
+  return svg + `<p class="legenda">Cada anel é um mês: quanto mais perto do centro, mais cedo. Quanto maior e mais laranja o ponto, mais abaixo do normal. Toque num ponto.</p>` + sel;
+}
+
+function telaOndas(D) {
+  const semanas = D.destinos[0].semanal.length;
+  const cab = Array.from({length: semanas}, (_, s) => {
+    const ini = somaDias(D.hoje, 1 + s * 7), dia = +ini.slice(8, 10);
+    return `<span>${dia <= 7 ? nomeMes(D, +ini.slice(5, 7)).slice(0, 3) : ''}</span>`;
+  }).join('');
+  const linhas = D.destinos.filter(passaFiltro).map(d => {
+    const pico = Math.max(...d.semanal);
+    const barras = d.semanal.map(v => {
+      const [cor] = corDesconto(v);
+      const h = v < 0.03 ? 2 : Math.round(4 + v * 90);
+      return `<i style="height:${Math.min(44, h)}px;background:${v < 0.03 ? '#c9c6bd' : cor}"></i>`;
+    }).join('');
+    return `<button class="onda" data-trecho="${d.codigo}"><span><span class="n">${esc(d.nome)}</span><br>
+      <span class="p">${pico >= 0.03 ? '−' + pct(pico) + ' no pico' : 'sem queda'}</span></span>
+      <span class="barras" aria-hidden="true">${barras}</span></button>`;
+  }).join('');
+  return `<div class="ondas-cab"><span></span>${cab}</div>${linhas}
+    <p class="legenda" style="margin-top:10px">A altura da onda é quanto o preço está abaixo do normal, semana a semana. Linha reta: preço normal. Toque num destino.</p>`;
+}
+
+async function telaExplorar() {
+  const D = await dados(estado.faixa);
+  return `<div class="topo"><span class="sub">Saindo de São Paulo · próximos 6 meses</span><h1>Onde está abaixo do normal</h1></div>
+    ${seletorFaixa()}
+    <div class="faixas" role="group" aria-label="Visualização" style="margin-top:0">
+      <button class="${estado.modo === 'radar' ? 'ativo' : ''}" data-modo="radar">Radar</button>
+      <button class="${estado.modo === 'ondas' ? 'ativo' : ''}" data-modo="ondas">Ondas</button></div>
+    ${chipsTags()}
+    ${estado.modo === 'radar' ? await telaRadar(D) : telaOndas(D)}`;
+}
+
+async function telaTrecho() {
+  const D = await dados(estado.faixa);
+  const d = D.destinos.find(x => x.codigo === estado.trecho);
+  const melhor = d.calendario.reduce((a, b) => b.desconto > a.desconto ? b : a);
+  const porMes = {};
+  d.calendario.forEach(c => (porMes[c.ida.slice(0, 7)] = porMes[c.ida.slice(0, 7)] || []).push(c));
+  const vigiado = viagens.some(v => v.destinos.length === 1 && v.destinos[0] === d.codigo);
+  const meses = Object.entries(porMes).map(([chave, dias]) => {
+    const primeiro = new Date(dias[0].ida + 'T12:00:00').getDay();
+    const celulas = Array.from({length: primeiro}, () => '<span></span>').join('') + dias.map(c => {
+      const [fundo, texto] = corDesconto(c.desconto);
+      return `<button class="dia ${estado.dia === c.ida ? 'sel' : ''}" data-dia="${c.ida}" style="background:${fundo};color:${texto}"
+        aria-label="${dataBR(c.ida)}: ${brl(c.preco)}">${+c.ida.slice(8)}</button>`;
+    }).join('');
+    return `<div class="mes" id="mes-${chave}"><h3>${nomeMes(D, +chave.slice(5))} ${chave.slice(0, 4)}</h3>
+      <div class="cal">${DIAS_SEMANA.map(s => `<span class="ds">${s}</span>`).join('')}${celulas}</div></div>`;
+  }).join('');
+  let detalhe = '';
+  if (estado.dia) {
+    const c = d.calendario.find(x => x.ida === estado.dia);
+    const sem = DIAS_SEMANA[new Date(c.ida + 'T12:00:00').getDay()];
+    detalhe = `<div class="cartao detalhe"><div class="linha-topo"><span class="nome">${brl(c.preco)}</span>
+      <span class="desc">${c.desconto >= 0.03 ? pct(c.desconto) + ' abaixo do normal' : c.desconto <= -0.03 ? pct(c.desconto) + ' acima do normal' : 'preço normal'}</span></div>
+      <div class="info">Ida ${dataBR(c.ida)} (${sem}) · volta ${dataBR(somaDias(c.ida, c.dur))} · ${c.dur} dias</div>
+      <div class="mini">Normal neste mês: ${brl(c.normal)}</div></div>`;
+  }
+  return `<button class="voltar" data-acao="voltar">← Voltar</button>
+    <div class="topo" style="padding-top:4px"><span class="sub">${esc(d.regiao)} · viagens ${FAIXAS[estado.faixa].toLowerCase()}</span><h1>${esc(d.nome)}</h1>
+      <span class="info">Melhor data: ${dataBR(melhor.ida)}, ${brl(melhor.preco)} (${melhor.desconto >= 0.03 ? pct(melhor.desconto) + ' abaixo do normal' : 'preço normal'})</span></div>
+    <div style="margin:8px 0">${vigiado ? '<span class="mini">Você já vigia este destino.</span>' : `<button class="botao leve" data-acao="vigiar">Vigiar este destino</button>`}</div>
+    <div class="escala" aria-hidden="true"><i style="background:var(--neutro)"></i>normal <i style="background:var(--laranja-claro)"></i>3% <i style="background:var(--laranja-medio)"></i>8% <i style="background:var(--laranja)"></i>15% <i style="background:var(--laranja-forte)"></i>25% abaixo</div>
+    ${meses}${detalhe}`;
+}
+
+function folhaNovaViagem() {
+  const D = cache[estado.faixa];
+  const dest = D.destinos.map(d => `<button type="button" class="chip" data-escolha="destino" data-valor="${d.codigo}">${esc(d.nome)}</button>`).join('');
+  const meses = D.meses.slice(1).map(m => `<button type="button" class="chip" data-escolha="mes" data-valor="${m.mes}">${m.nome}</button>`).join('');
+  const faixas = Object.entries(FAIXAS).map(([k, t]) => `<button type="button" class="chip ${k === estado.faixa ? 'ativo' : ''}" data-escolha="faixa" data-valor="${k}">${t}</button>`).join('');
+  document.getElementById('folha').innerHTML = `<div class="fundo-folha" data-acao="fechar"><form class="folha" id="form-viagem">
+    <h2>Nova viagem</h2><span class="sub">Diga para onde e mais ou menos quando. O resto a gente vigia.</span>
+    <label for="nome-viagem">Nome</label><input id="nome-viagem" required maxlength="60" placeholder="Ex.: Férias de março">
+    <label>Para onde (um ou vários)</label><div class="chips quebra">${dest}</div>
+    <label>Quando (deixe vazio para qualquer mês)</label><div class="chips quebra">${meses}</div>
+    <label>Duração</label><div class="chips quebra">${faixas}</div>
+    <div style="display:flex;gap:8px;margin-top:16px"><button type="button" class="botao leve" data-acao="fechar">Cancelar</button><button class="botao">Salvar</button></div>
+  </form></div>`;
+}
+
+// ---------- ciclo ----------
+async function desenhar() {
+  const app = document.getElementById('app');
+  const html = estado.tela === 'inicio' ? await telaInicio() : estado.tela === 'explorar' ? await telaExplorar() : await telaTrecho();
+  app.innerHTML = html;
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('ativo', b.dataset.tela === estado.tela || (estado.tela === 'trecho' && b.dataset.tela === estado.voltarPara)));
+}
+
+function abrirTrecho(codigo, mes) {
+  estado.voltarPara = estado.tela === 'trecho' ? estado.voltarPara : estado.tela;
+  Object.assign(estado, {tela: 'trecho', trecho: codigo, dia: null});
+  desenhar().then(() => {
+    const D = cache[estado.faixa];
+    const m = mes && D.meses.find(x => x.mes === +mes);
+    const alvo = m && document.getElementById(`mes-${m.ano}-${String(m.mes).padStart(2, '0')}`);
+    if (alvo) alvo.scrollIntoView({block: 'start'}); else window.scrollTo(0, 0);
+  });
+}
+
+document.addEventListener('click', async ev => {
+  const el = ev.target.closest('[data-tela],[data-faixa],[data-modo],[data-tag],[data-trecho],[data-radar],[data-dia],[data-viagem],[data-acao],[data-escolha]');
+  if (!el) return;
+  const ds = el.dataset;
+  if (ds.escolha) {
+    if (ds.escolha === 'faixa') el.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('ativo'));
+    el.classList.toggle('ativo', ds.escolha === 'faixa' ? true : undefined);
+    return;
+  }
+  if (ds.acao === 'fechar') { if (ev.target === el || el.tagName === 'BUTTON') document.getElementById('folha').innerHTML = ''; return; }
+  if (ds.tela) { Object.assign(estado, {tela: ds.tela}); window.scrollTo(0, 0); return desenhar(); }
+  if (ds.faixa) { estado.faixa = ds.faixa; estado.radarSel = null; return desenhar(); }
+  if (ds.modo) { estado.modo = ds.modo; return desenhar(); }
+  if (ds.tag) { estado.tag = ds.tag; return desenhar(); }
+  if (ds.radar) { const [codigo, mes] = ds.radar.split('|'); estado.radarSel = {codigo, mes: +mes}; return desenhar(); }
+  if (ds.trecho) return abrirTrecho(ds.trecho, ds.mes);
+  if (ds.dia) { estado.dia = ds.dia; const y = window.scrollY; await desenhar(); window.scrollTo(0, y); return; }
+  if (ds.viagem) {
+    const v = viagens.find(x => x.id === +ds.viagem), s = await statusViagem(v);
+    if (v.faixa !== estado.faixa) estado.faixa = v.faixa;
+    if (s) abrirTrecho(s.codigo, s.mes);
+    return;
+  }
+  if (ds.acao === 'voltar') { estado.tela = estado.voltarPara; return desenhar(); }
+  if (ds.acao === 'nova-viagem') return folhaNovaViagem();
+  if (ds.acao === 'vigiar') {
+    const d = cache[estado.faixa].destinos.find(x => x.codigo === estado.trecho);
+    await criarViagem({nome: d.nome, destinos: [d.codigo], meses: [], faixa: estado.faixa});
+    const y = window.scrollY; await desenhar(); window.scrollTo(0, y);
+  }
+});
+
+document.addEventListener('submit', async ev => {
+  if (ev.target.id !== 'form-viagem') return;
+  ev.preventDefault();
+  const f = ev.target, ativos = tipo => [...f.querySelectorAll(`.chip.ativo[data-escolha="${tipo}"]`)].map(c => c.dataset.valor);
+  const destinos = ativos('destino');
+  if (!destinos.length) { f.querySelector('label:nth-of-type(2)').textContent = 'Para onde: escolha pelo menos um destino'; return; }
+  await criarViagem({nome: f.querySelector('#nome-viagem').value.trim(), destinos, meses: ativos('mes').map(Number), faixa: ativos('faixa')[0] || estado.faixa});
+  document.getElementById('folha').innerHTML = '';
+  estado.tela = 'inicio'; desenhar();
+});
+
+(async () => { await carregarViagens(); await dados(estado.faixa); desenhar(); })();
+</script>
+</body>
+</html>
